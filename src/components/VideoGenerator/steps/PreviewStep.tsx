@@ -38,7 +38,7 @@ export function PreviewStep({ carData, onConfirm, onImageCountChange, onRetryExt
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Car Info */}
+          {/* Car Info - Simplified */}
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <div className="space-y-2">
@@ -49,35 +49,9 @@ export function PreviewStep({ carData, onConfirm, onImageCountChange, onRetryExt
                     {carData.location}
                   </div>
                   <Badge variant="secondary" className="text-lg font-semibold">
-                    {carData.price}/jour
+                    {carData.price}
                   </Badge>
                 </div>
-              </div>
-            </div>
-
-            {/* Specifications */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-muted/20 rounded-lg p-3 text-center">
-                <Calendar className="h-5 w-5 mx-auto mb-2 text-primary" />
-                <p className="text-sm text-muted-foreground">Année</p>
-                <p className="font-semibold">{carData.specs.year}</p>
-              </div>
-              <div className="bg-muted/20 rounded-lg p-3 text-center">
-                <Palette className="h-5 w-5 mx-auto mb-2 text-primary" />
-                <p className="text-sm text-muted-foreground">Couleur</p>
-                <p className="font-semibold">{carData.specs.color}</p>
-              </div>
-              <div className="bg-muted/20 rounded-lg p-3 text-center">
-                <Zap className="h-5 w-5 mx-auto mb-2 text-primary" />
-                <p className="text-sm text-muted-foreground">Puissance</p>
-                <p className="font-semibold">{carData.specs.horsepower}</p>
-              </div>
-              <div className="bg-muted/20 rounded-lg p-3 text-center">
-                <div className="h-5 w-5 mx-auto mb-2 text-primary flex items-center justify-center text-xs font-bold">
-                  V
-                </div>
-                <p className="text-sm text-muted-foreground">Moteur</p>
-                <p className="font-semibold">{carData.specs.engine}</p>
               </div>
             </div>
           </div>
@@ -187,16 +161,15 @@ export function PreviewStep({ carData, onConfirm, onImageCountChange, onRetryExt
             </div>
           )}
 
-          {/* Performance Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">Vitesse max</p>
-              <p className="text-2xl font-bold text-primary">{carData.specs.maxSpeed}</p>
+          {/* Performance Stats - Simplified */}
+          <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              <span className="font-medium text-primary">Données extraites avec succès</span>
             </div>
-            <div className="bg-gradient-to-br from-accent/10 to-accent/5 rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">0-100 km/h</p>
-              <p className="text-2xl font-bold text-accent">{carData.specs.acceleration}</p>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Titre: {carData.title} • Prix: {carData.price} • {selectedImageCount} images sélectionnées
+            </p>
           </div>
 
           {hasEnoughImages ? (
