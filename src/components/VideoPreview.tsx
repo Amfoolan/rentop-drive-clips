@@ -66,167 +66,156 @@ export function VideoPreview({
       }
     } else {
       setIsPlaying(true);
+      setProgress(0);
+      setCurrentImageIndex(0);
       // Simulate video playback with image cycling
       intervalRef.current = setInterval(() => {
-        setCurrentImageIndex(prev => (prev + 1) % carData.images.length);
+        setCurrentImageIndex(prev => {
+          const next = (prev + 1) % carData.images.length;
+          return next;
+        });
         setProgress(prev => {
-          const newProgress = prev + 2; // 2% per interval
+          const newProgress = prev + (100 / carData.images.length);
           if (newProgress >= 100) {
             setIsPlaying(false);
             setCurrentImageIndex(0);
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+            }
             return 0;
           }
           return newProgress;
         });
-      }, 1000); // Change image every second
+      }, 1500); // Change image every 1.5 seconds
     }
   };
 
   return (
-    <Card className="glass-card border-0">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Eye className="h-5 w-5" />
-            Prévisualisation vidéo
-          </div>
-          <Badge variant="secondary">9:16 - TikTok</Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Video Preview Container */}
-        <div className="relative">
-          <div className="video-preview bg-gradient-to-br from-background to-muted rounded-xl overflow-hidden relative">
-            {/* Current Image */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <img 
-                src={carData.images[currentImageIndex]}
-                alt={`${carData.model} - Image ${currentImageIndex + 1}`}
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Overlay Text */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                <h3 className="text-white font-bold text-xl mb-2">
-                  {carData.overlayText.split(' • ')[0]}
-                </h3>
-                <p className="text-white/90 text-sm">
-                  {carData.overlayText.split(' • ')[1]}
-                </p>
-                <div className="mt-2">
-                  <Badge variant="secondary" className="bg-accent text-white">
-                    {carData.price}
-                  </Badge>
+    <div className="w-full max-w-sm mx-auto">
+      <Card className="glass-card border-0">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              Aperçu vidéo
+            </div>
+            <Badge variant="secondary" className="text-xs">9:16</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Video Preview Container - Responsive */}
+          <div className="relative">
+            <div className="aspect-[9/16] bg-gradient-to-br from-background to-muted rounded-lg overflow-hidden relative border border-border/50">
+              {/* Current Image */}
+              <div className="absolute inset-0">
+                <img 
+                  src={carData.images[currentImageIndex]}
+                  alt={`${carData.model} - Image ${currentImageIndex + 1}`}
+                  className="w-full h-full object-cover transition-opacity duration-300"
+                  onError={(e) => {
+                    e.currentTarget.src = '/placeholder.svg';
+                  }}
+                />
+                
+                {/* Overlay Text */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                  <h3 className="text-white font-bold text-sm mb-1 leading-tight">
+                    {carData.overlayText.split(' • ')[0]}
+                  </h3>
+                  <p className="text-white/90 text-xs leading-tight">
+                    {carData.overlayText.split(' • ')[1]}
+                  </p>
+                  <div className="mt-1">
+                    <Badge variant="secondary" className="bg-primary/90 text-white text-xs">
+                      {carData.price}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Play/Pause Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    onClick={handlePlayPause}
+                    className="rounded-full w-12 h-12 bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30"
+                  >
+                    {isPlaying ? (
+                      <Pause className="h-5 w-5 text-white" />
+                    ) : (
+                      <Play className="h-5 w-5 ml-0.5 text-white" />
+                    )}
+                  </Button>
                 </div>
               </div>
 
-              {/* Play/Pause Overlay */}
-              {!isPlaying && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+              {/* Progress Indicators */}
+              <div className="absolute top-2 left-2 right-2 flex gap-0.5">
+                {carData.images.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`h-0.5 flex-1 rounded-full transition-all duration-300 ${
+                      index < currentImageIndex 
+                        ? 'bg-white' 
+                        : index === currentImageIndex && isPlaying
+                          ? 'bg-white/70' 
+                          : 'bg-white/30'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Sound Control */}
+              {isPlaying && (
+                <div className="absolute top-2 right-2">
                   <Button
-                    variant="glass"
-                    size="xl"
-                    onClick={handlePlayPause}
-                    className="rounded-full w-20 h-20"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setIsMuted(!isMuted)}
+                    className="rounded-full w-6 h-6 bg-black/30 backdrop-blur-sm border border-white/30 hover:bg-black/50 p-0"
                   >
-                    <Play className="h-8 w-8 ml-1" />
+                    {isMuted ? (
+                      <VolumeX className="h-3 w-3 text-white" />
+                    ) : (
+                      <Volume2 className="h-3 w-3 text-white" />
+                    )}
                   </Button>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Progress Indicators */}
-            <div className="absolute top-4 left-4 right-4 flex gap-1">
-              {carData.images.map((_, index) => (
-                <div
-                  key={index}
-                  className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                    index < currentImageIndex 
-                      ? 'bg-white' 
-                      : index === currentImageIndex 
-                        ? 'bg-white/70' 
-                        : 'bg-white/30'
-                  }`}
-                />
-              ))}
+          {/* Audio Preview - Compact */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm">Voix-off</h4>
+              <Badge variant="outline" className="text-xs">
+                {Math.ceil(carData.voiceOver.length / 12)}s
+              </Badge>
             </div>
-
-            {/* Controls */}
+            <div className="p-2 bg-muted/30 rounded-md border border-border/50">
+              <p className="text-xs text-muted-foreground italic line-clamp-2">
+                "{carData.voiceOver}"
+              </p>
+            </div>
             {isPlaying && (
-              <div className="absolute bottom-20 right-4 flex flex-col gap-2">
-                <Button
-                  variant="glass"
-                  size="icon"
-                  onClick={handlePlayPause}
-                  className="rounded-full"
-                >
-                  <Pause className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="glass"
-                  size="icon"
-                  onClick={() => setIsMuted(!isMuted)}
-                  className="rounded-full"
-                >
-                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                </Button>
-              </div>
+              <Progress value={progress} className="h-1" />
             )}
           </div>
-        </div>
 
-        {/* Audio Preview */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium">Audio Voice-over</h4>
-            <Button variant="outline" size="sm">
-              <Play className="h-3 w-3 mr-1" />
-              Écouter
-            </Button>
+          {/* Video Specs - Compact Grid */}
+          <div className="grid grid-cols-2 gap-2 text-xs border-t border-border/50 pt-3">
+            <div>
+              <p className="text-muted-foreground">Format</p>
+              <p className="font-medium">1080x1920</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Images</p>
+              <p className="font-medium">{carData.images.length} photos</p>
+            </div>
           </div>
-          <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
-            <p className="text-sm text-muted-foreground italic">
-              "{carData.voiceOver}"
-            </p>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <Button variant="generate" className="flex-1">
-            <Download className="mr-2 h-4 w-4" />
-            Télécharger
-          </Button>
-          <Button variant="outline" className="flex-1">
-            <Share2 className="mr-2 h-4 w-4" />
-            Partager
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Video Specs */}
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
-          <div>
-            <p className="text-sm text-muted-foreground">Format</p>
-            <p className="font-medium">9:16 - 1080x1920</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Durée</p>
-            <p className="font-medium">15 secondes</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Images</p>
-            <p className="font-medium">{carData.images.length} photos</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Voix</p>
-            <p className="font-medium">ElevenLabs</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

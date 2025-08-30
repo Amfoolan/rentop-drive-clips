@@ -62,7 +62,7 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack }: FinalPr
               </Badge>
             </div>
             
-            <div className="relative">
+            <div className="relative max-w-xs mx-auto">
               <VideoPreview
                 images={selectedImages}
                 overlayText={config.overlayText}
@@ -72,21 +72,10 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack }: FinalPr
               />
               
               {/* Overlay de contrôle */}
-              <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
-                <Button
-                  onClick={() => setIsPlayingPreview(!isPlayingPreview)}
-                  size="lg"
-                  className="bg-white/90 text-black hover:bg-white"
-                >
-                  {isPlayingPreview ? (
-                    <Pause className="h-6 w-6" />
-                  ) : (
-                    <Play className="h-6 w-6 ml-1" />
-                  )}
-                  <span className="ml-2">
-                    {isPlayingPreview ? 'Pause' : 'Aperçu muet'}
-                  </span>
-                </Button>
+              <div className="absolute inset-0 bg-black/10 rounded-lg flex items-center justify-center pointer-events-none">
+                <div className="bg-white/90 rounded-lg px-3 py-1 text-xs font-medium text-gray-700">
+                  Aperçu muet
+                </div>
               </div>
             </div>
           </div>

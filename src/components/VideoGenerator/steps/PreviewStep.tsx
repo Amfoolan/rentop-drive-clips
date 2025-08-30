@@ -175,13 +175,15 @@ export function PreviewStep({ carData, onConfirm, onImageCountChange, onRetryExt
           {/* Video Preview */}
           {showVideoPreview && hasEnoughImages && (
             <div className="border border-border rounded-lg p-4">
-              <VideoPreview
-                images={selectedImages}
-                overlayText={carData.title}
-                voiceOverText={`Découvrez cette magnifique ${carData.title} disponible à ${carData.location} pour ${carData.price} par jour. Réservez maintenant sur Rentop !`}
-                model={carData.title}
-                price={carData.price}
-              />
+              <div className="flex justify-center">
+                <VideoPreview
+                  images={selectedImages}
+                  overlayText={carData.title}
+                  voiceOverText={`Découvrez cette magnifique ${carData.title} disponible à ${carData.location} pour ${carData.price} par jour. Réservez maintenant sur Rentop !`}
+                  model={carData.title}
+                  price={carData.price}
+                />
+              </div>
             </div>
           )}
 
