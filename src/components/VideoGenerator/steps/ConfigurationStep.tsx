@@ -53,6 +53,52 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
                 </p>
               </div>
 
+              {/* Overlay Design Options */}
+              <div className="space-y-3">
+                <Label>Style du texte overlay</Label>
+                <div className="grid grid-cols-1 gap-3">
+                  {/* Style Option 1 - Clean */}
+                  <div className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">Style Clean</span>
+                      <div className="w-4 h-4 rounded-full border-2 border-primary bg-primary"></div>
+                    </div>
+                    <div className="bg-black/80 rounded p-3 text-center">
+                      <div className="text-white text-sm font-bold">AUDI Q8 S Line Kit (2021) White</div>
+                      <div className="text-white text-xs mt-1">Réserve sur Rentop.co</div>
+                      <div className="bg-primary text-white px-2 py-1 rounded-full text-xs mt-2 inline-block">
+                        699 AED/jour
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Style Option 2 - Gradient */}
+                  <div className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors opacity-60">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">Style Gradient</span>
+                      <div className="w-4 h-4 rounded-full border-2 border-muted"></div>
+                    </div>
+                    <div className="bg-gradient-to-t from-black/90 to-transparent rounded p-3 text-center">
+                      <div className="text-white text-sm font-bold">AUDI Q8 S Line Kit (2021) White</div>
+                      <div className="bg-gradient-to-r from-pink-500 to-rose-400 text-white px-2 py-1 rounded-full text-xs mt-2 inline-block">
+                        699 AED/jour
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Style Option 3 - Minimalist */}
+                  <div className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors opacity-60">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">Style Minimalist</span>
+                      <div className="w-4 h-4 rounded-full border-2 border-muted"></div>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur rounded p-3 text-center">
+                      <div className="text-white text-sm font-semibold">AUDI Q8 • 699 AED/jour</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="voiceover">Script de la voix-off</Label>
                 <Textarea

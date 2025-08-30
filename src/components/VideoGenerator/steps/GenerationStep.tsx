@@ -175,69 +175,64 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
               {/* Mock Video Player */}
               <div className="space-y-4">
                 <h4 className="font-medium">Aperçu de la vidéo</h4>
-                <div className="relative bg-black rounded-lg overflow-hidden aspect-[9/16] max-w-[300px] mx-auto">
+                <div className="relative bg-black rounded-lg overflow-hidden aspect-[9/16] max-w-[300px] mx-auto group">
                   {/* Video Background with first car image */}
                   <div 
-                    className="absolute inset-0 bg-cover bg-center transition-all duration-300"
+                    className="absolute inset-0 bg-cover bg-center transition-all duration-500"
                     style={{ backgroundImage: `url(${carData.images[0]})` }}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40"></div>
                   </div>
                   
-                  {/* Overlay Text with Price */}
-                  <div className="absolute bottom-8 left-4 right-4 z-10">
-                    <div className="text-center space-y-3">
-                      {/* Car Title */}
-                      <h3 className="text-white text-xl font-bold leading-tight drop-shadow-lg">
+                  {/* Aperçu muet indicator */}
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+                    <div className="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
+                      <span className="text-white text-xs font-medium">Aperçu muet</span>
+                    </div>
+                  </div>
+                  
+                  {/* Car Title and Info */}
+                  <div className="absolute bottom-6 left-4 right-4 z-10 space-y-3">
+                    <div className="text-center space-y-2">
+                      {/* Car Name */}
+                      <h3 className="text-white text-lg font-bold leading-tight drop-shadow-lg">
                         {carData.title.replace('Rent ', '').replace(' in Dubai', '')}
                       </h3>
                       
-                      {/* Price in Pink */}
-                      <div className="bg-gradient-to-r from-pink-500 to-rose-400 text-white px-4 py-2 rounded-full text-lg font-bold shadow-lg">
-                        {carData.price}
-                      </div>
-                      
-                      {/* Call to Action */}
-                      <p className="text-white text-sm font-medium drop-shadow-lg">
+                      {/* Subtitle */}
+                      <p className="text-white text-sm opacity-90 drop-shadow-lg">
                         Réserve sur Rentop.co
                       </p>
+                      
+                      {/* Price Badge */}
+                      <div className="inline-block bg-primary px-4 py-1.5 rounded-full">
+                        <span className="text-white text-sm font-bold">
+                          {carData.price}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Play Button - Functional */}
-                  <div className="absolute inset-0 flex items-center justify-center z-20 group cursor-pointer">
-                    <div className="bg-primary/80 hover:bg-primary rounded-full p-4 transition-all duration-200 group-hover:scale-110 shadow-lg backdrop-blur-sm">
-                      <Play className="h-6 w-6 text-white ml-1" fill="white" />
+                  {/* Interactive Play Button */}
+                  <div className="absolute inset-0 flex items-center justify-center z-20">
+                    <div className="bg-white/20 hover:bg-white/30 rounded-full p-6 transition-all duration-200 hover:scale-110 shadow-lg backdrop-blur-sm cursor-pointer group-hover:bg-white/40">
+                      <Play className="h-8 w-8 text-white ml-1" fill="white" />
                     </div>
                   </div>
                   
-                  {/* Duration indicator */}
-                  <div className="absolute top-4 left-4 z-10">
-                    <Badge variant="secondary" className="text-xs bg-black/50 text-white border-none">
-                      15s
-                    </Badge>
-                  </div>
-                  
-                  {/* Video quality indicator */}
+                  {/* Duration */}
                   <div className="absolute top-4 right-4 z-10">
-                    <Badge variant="secondary" className="text-xs bg-black/50 text-white border-none">
-                      HD
-                    </Badge>
+                    <div className="bg-black/50 rounded px-2 py-1">
+                      <span className="text-white text-xs">15s</span>
+                    </div>
                   </div>
                 </div>
                 
-                {/* Video Controls */}
-                <div className="flex justify-center space-x-2">
-                  <Button size="sm" variant="outline" className="text-xs">
-                    <Play className="h-3 w-3 mr-1" />
-                    Lire
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-xs">
-                    Pause
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-xs">
-                    Recommencer
-                  </Button>
+                {/* Playback Status */}
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">
+                    ▶️ Cliquez pour prévisualiser • 🔇 Aperçu sans son
+                  </p>
                 </div>
               </div>
 
