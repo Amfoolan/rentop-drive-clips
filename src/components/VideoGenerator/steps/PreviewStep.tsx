@@ -36,7 +36,6 @@ export function PreviewStep({ carData, onConfirm, onImageCountChange, onRetryExt
   const [showVideoPreview, setShowVideoPreview] = useState(false);
   const [orderedImages, setOrderedImages] = useState<string[]>(carData.images);
   const [isReorderMode, setIsReorderMode] = useState(false);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   
   const hasEnoughImages = orderedImages.length >= 5;
   const selectedImages = orderedImages.slice(0, selectedImageCount);
@@ -47,31 +46,15 @@ export function PreviewStep({ carData, onConfirm, onImageCountChange, onRetryExt
     onImageCountChange?.(count);
   };
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === dropIndex) return;
+  const moveImage = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= orderedImages.length) return;
     
     const newImages = [...orderedImages];
-    const [movedImage] = newImages.splice(draggedIndex, 1);
-    newImages.splice(dropIndex, 0, movedImage);
+    const [movedImage] = newImages.splice(fromIndex, 1);
+    newImages.splice(toIndex, 0, movedImage);
     
     setOrderedImages(newImages);
     onImageOrderChange?.(newImages);
-    setDraggedIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
   };
 
   const resetOrder = () => {
@@ -193,7 +176,7 @@ export function PreviewStep({ carData, onConfirm, onImageCountChange, onRetryExt
                   <div>
                     <p className="text-sm font-medium text-blue-800">Mode réorganisation activé</p>
                     <p className="text-xs text-blue-600 mt-1">
-                      Glissez-déposez les images pour changer leur ordre dans la vidéo
+                      Utilisez les boutons ↑ et ↓ pour changer l'ordre des images dans la vidéo
                     </p>
                   </div>
                   <Button
@@ -215,19 +198,31 @@ export function PreviewStep({ carData, onConfirm, onImageCountChange, onRetryExt
                   key={`${image}-${index}`}
                   className={`relative ${
                     isReorderMode 
-                      ? 'flex items-center gap-3 p-3 border border-border rounded-lg bg-card cursor-move hover:bg-muted/50 transition-colors' 
+                      ? 'flex items-center gap-3 p-3 border border-border rounded-lg bg-card' 
                       : 'aspect-square rounded-lg overflow-hidden bg-muted'
-                  } ${draggedIndex === index ? 'opacity-50' : ''}`}
-                  draggable={isReorderMode}
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
-                  onDragEnd={handleDragEnd}
+                  }`}
                 >
                   {isReorderMode ? (
                     <>
-                      <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded">
-                        <GripVertical className="h-4 w-4 text-primary" />
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          onClick={() => moveImage(index, index - 1)}
+                          disabled={index === 0}
+                          variant="outline"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          onClick={() => moveImage(index, index + 1)}
+                          disabled={index === selectedImages.length - 1}
+                          variant="outline"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
                       </div>
                       <div className="aspect-square w-16 h-16 rounded overflow-hidden bg-muted">
                         <img
