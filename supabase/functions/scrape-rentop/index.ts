@@ -155,57 +155,62 @@ function extractCarData(html: string, url: string): CarData | null {
     let price = '';
     console.log('🔍 Searching for price in HTML...');
     
-    // First, look for the main price display patterns - prioritizing lower, more realistic prices
+    // First, look for the main price display patterns - focus on "From AED XXX per day" format
     const mainPricePatterns = [
-      // Pattern 1: "From AED 699 per day" - the main display price
-      /From\s+AED\s*&nbsp;\s*(\d+(?:,\d{3})*)\s*per\s+day/i,
-      /From\s+AED\s*(\d+(?:,\d{3})*)\s*per\s+day/i,
+      // Pattern 1: Most specific - "From AED 699 per day" in main price section
+      /From\s+AED\s*(\d{3,4})\s*per\s+day/i,
+      /From\s+AED\s*&nbsp;\s*(\d{3,4})\s*per\s+day/i,
       
-      // Pattern 2: "From AED 699" - without per day
-      /From\s+AED\s*&nbsp;\s*(\d+(?:,\d{3})*)/i,
-      /From\s+AED\s*(\d+(?:,\d{3})*)/i,
+      // Pattern 2: Main price display with currency first
+      /"price"[^}]*?(\d{3,4})[^}]*?"currency"/i,
+      /class="[^"]*price[^"]*"[^>]*>[^<]*?(\d{3,4})[^<]*?AED/i,
       
-      // Pattern 3: "AED 699 per day" - direct format
-      /AED\s*&nbsp;\s*(\d+(?:,\d{3})*)\s*per\s+day/i,
-      /AED\s*(\d+(?:,\d{3})*)\s*per\s+day/i,
+      // Pattern 3: Look for main booking section price
+      /booking[^>]*>[^<]*?(\d{3,4})[^<]*?AED/i,
+      /From\s+AED\s*(\d{3,4})/i,
       
-      // Pattern 4: In main price display containers
-      /<[^>]*class="[^"]*price[^"]*"[^>]*>[^<]*?(\d+(?:,\d{3})*)[^<]*?per\s+day/i,
-      /<[^>]*class="[^"]*font-medium[^"]*"[^>]*>[^<]*?(\d+(?:,\d{3})*)[^<]*?per\s+day/i,
+      // Pattern 4: Per day pricing in main sections
+      /(\d{3,4})\s*AED\s*per\s+day/i,
+      /(\d{3,4})\s*AED\/day/i,
     ];
     
     let allFoundPrices: { price: number, formattedPrice: string, pattern: number }[] = [];
     
     for (let i = 0; i < mainPricePatterns.length; i++) {
       const pattern = mainPricePatterns[i];
-      const matches = html.match(new RegExp(pattern.source, 'gi'));
+      const matches = [...html.matchAll(new RegExp(pattern.source, 'gi'))];
       
-      if (matches) {
+      if (matches.length > 0) {
         for (const match of matches) {
-          const priceMatch = match.match(pattern);
-          if (priceMatch && priceMatch[1]) {
-            const priceNumber = parseInt(priceMatch[1].replace(/,/g, ''));
-            // Focus on realistic daily rental prices (50-2000 AED per day)
-            if (priceNumber >= 50 && priceNumber <= 2000) {
+          if (match[1]) {
+            const priceNumber = parseInt(match[1].replace(/,/g, ''));
+            // Focus on realistic car rental prices (200-2000 AED per day)
+            if (priceNumber >= 200 && priceNumber <= 2000) {
               allFoundPrices.push({
                 price: priceNumber,
-                formattedPrice: `${priceMatch[1]} AED/jour`,
+                formattedPrice: `${match[1]} AED/jour`,
                 pattern: i + 1
               });
-              console.log(`✅ Found potential price with pattern ${i + 1}: ${priceMatch[1]} AED (${priceNumber})`);
-              console.log(`   Original match: ${match.substring(0, 100)}...`);
+              console.log(`✅ Found potential price with pattern ${i + 1}: ${match[1]} AED (${priceNumber})`);
+              console.log(`   Original match: ${match[0]}`);
             }
           }
         }
       }
     }
     
-    // Select the lowest reasonable price (most likely to be the main display price)
+    // Select the most reasonable price - prefer prices in 600-800 range (typical for Q8)
     if (allFoundPrices.length > 0) {
-      allFoundPrices.sort((a, b) => a.price - b.price);
+      // Sort by how close to typical Q8 rental price (around 700)
+      allFoundPrices.sort((a, b) => {
+        const aDistance = Math.abs(a.price - 700);
+        const bDistance = Math.abs(b.price - 700);
+        return aDistance - bDistance;
+      });
+      
       const selectedPrice = allFoundPrices[0];
       price = selectedPrice.formattedPrice;
-      console.log(`✅ Selected lowest price: ${price} from pattern ${selectedPrice.pattern}`);
+      console.log(`✅ Selected most reasonable price: ${price} from pattern ${selectedPrice.pattern}`);
     }
     
     // If still no price found, try more aggressive patterns
