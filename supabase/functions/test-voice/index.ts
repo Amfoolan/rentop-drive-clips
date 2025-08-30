@@ -12,13 +12,23 @@ serve(async (req) => {
   }
 
   try {
-    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
+    const { voiceId, text, voiceSettings, apiKey, model } = await req.json();
+    
+    // Use API key from request body or environment (prioritize request body)
+    const ELEVENLABS_API_KEY = apiKey || Deno.env.get('ELEVENLABS_API_KEY');
     
     if (!ELEVENLABS_API_KEY) {
-      throw new Error('ELEVENLABS_API_KEY is not configured');
+      return new Response(
+        JSON.stringify({ 
+          error: 'API key is required',
+          details: 'Please provide apiKey in request body or configure ELEVENLABS_API_KEY in Supabase secrets'
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
-
-    const { voiceId, text, voiceSettings } = await req.json();
 
     if (!voiceId || !text) {
       return new Response(
@@ -47,7 +57,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           text: testText,
-          model_id: 'eleven_multilingual_v2',
+          model_id: model || 'eleven_multilingual_v2',
           voice_settings: {
             stability: voiceSettings?.stability || 0.75,
             similarity_boost: voiceSettings?.similarity_boost || 0.75,

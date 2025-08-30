@@ -111,12 +111,10 @@ export function Settings() {
     }
 
     try {
-      // Utiliser l'edge function test-voice existante
       const response = await fetch(`https://hlfozjnlhahdbnosltxl.supabase.co/functions/v1/test-voice`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsZm96am5saGFoZGJub3NsdHhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NzQ2ODMsImV4cCI6MjA3MjE1MDY4M30.dfkDxicmr1VZiOeOqDbigPqGuE5uF40Y3zpO3bd2oaQ`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           text: "Test de connexion ElevenLabs depuis les paramètres",
