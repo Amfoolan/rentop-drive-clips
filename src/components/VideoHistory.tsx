@@ -1,20 +1,12 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Search, 
-  Filter, 
-  Eye, 
-  Download, 
-  Share2, 
-  Calendar,
-  Video,
-  TrendingUp,
-  MoreVertical
-} from "lucide-react";
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Clock, Download, ExternalLink, MoreHorizontal, Play, Share2, Eye, Heart, Share, Loader2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useGeneratedVideos } from '@/hooks/useGeneratedVideos';
 
 const mockVideoHistory = [
   {
@@ -95,18 +87,20 @@ const mockVideoHistory = [
 ];
 
 export function VideoHistory() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [platformFilter, setPlatformFilter] = useState("all");
+  const { videos, loading, downloadVideo } = useGeneratedVideos();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [platformFilter, setPlatformFilter] = useState('all');
 
-  const filteredVideos = mockVideoHistory.filter(video => {
-    const matchesSearch = video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         video.car.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || video.status === statusFilter;
-    const matchesPlatform = platformFilter === "all" || video.platforms.includes(platformFilter);
-    
-    return matchesSearch && matchesStatus && matchesPlatform;
-  });
+  const filteredVideos = useMemo(() => {
+    return videos.filter(video => {
+      const matchesSearch = video.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || video.status === statusFilter;
+      const matchesPlatform = platformFilter === 'all' || 
+        (Array.isArray(video.platforms) && video.platforms.includes(platformFilter));
+      return matchesSearch && matchesStatus && matchesPlatform;
+    });
+  }, [videos, searchTerm, statusFilter, platformFilter]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -122,6 +116,7 @@ export function VideoHistory() {
       case "published": return "Publié";
       case "processing": return "En cours";
       case "failed": return "Échec";
+      case "generated": return "Généré";
       default: return status;
     }
   };
@@ -140,16 +135,16 @@ export function VideoHistory() {
       <Card className="glass-card border-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5" />
+            <Play className="h-5 w-5" />
             Historique des vidéos
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Eye className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher par modèle de voiture..."
+                placeholder="Rechercher par titre..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -162,6 +157,7 @@ export function VideoHistory() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="generated">Généré</SelectItem>
                 <SelectItem value="published">Publié</SelectItem>
                 <SelectItem value="processing">En cours</SelectItem>
                 <SelectItem value="failed">Échec</SelectItem>
@@ -182,135 +178,102 @@ export function VideoHistory() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Video List */}
-      <div className="space-y-4">
-        {filteredVideos.map((video) => (
-          <Card key={video.id} className="glass-card border-0">
-            <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row gap-6">
-                {/* Thumbnail */}
-                <div className="w-full lg:w-32 h-48 lg:h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                  <img 
-                    src={video.thumbnail} 
-                    alt={video.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-bold text-lg mb-2">{video.title}</h3>
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <Badge variant={getStatusColor(video.status)}>
-                          {getStatusText(video.status)}
-                        </Badge>
-                        {video.platforms.map((platform) => (
-                          <Badge key={platform} variant="outline">
-                            {platform}
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(video.createdAt).toLocaleDateString('fr-FR')}
-                        </span>
-                        <span>Voix: {video.voice}</span>
-                        <span>{video.duration}s</span>
+      
+      <div className="grid gap-4">
+        {loading ? (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+              <p className="text-muted-foreground">Chargement des vidéos...</p>
+            </CardContent>
+          </Card>
+        ) : filteredVideos.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center text-muted-foreground">
+              Aucune vidéo trouvée
+            </CardContent>
+          </Card>
+        ) : (
+          filteredVideos.map((video) => (
+            <Card key={video.id} className="glass-card border-0">
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <img 
+                      src={video.thumbnail_url || "/placeholder.svg"} 
+                      alt={video.title}
+                      className="w-16 h-12 object-cover rounded border bg-muted"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm truncate">{video.title}</h3>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>{new Date(video.created_at).toLocaleDateString('fr-FR')}</span>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Share2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center gap-1">
+                      <Badge variant={getStatusColor(video.status)} className="text-xs">
+                        {getStatusText(video.status)}
+                      </Badge>
+                      {Array.isArray(video.platforms) && video.platforms.map((platform: string) => (
+                        <Badge key={platform} variant="outline" className="text-xs">
+                          {platform}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Stats */}
-                  {video.status === "published" && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-border/50">
-                      <div className="text-center">
-                        <div className="flex items-center justify-center gap-1 mb-1">
-                          <Eye className="h-4 w-4 text-primary" />
-                          <span className="font-semibold">{getTotalViews(video).toLocaleString()}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Vues totales</p>
+                  {video.status === 'published' && (
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground border-t pt-2">
+                      <div className="flex items-center gap-1">
+                        <Eye className="h-3 w-3" />
+                        <span>{video.stats?.views?.toLocaleString() || 0} vues</span>
                       </div>
-
-                      <div className="text-center">
-                        <div className="flex items-center justify-center gap-1 mb-1">
-                          <TrendingUp className="h-4 w-4 text-accent" />
-                          <span className="font-semibold">{getTotalLikes(video).toLocaleString()}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Likes totaux</p>
+                      <div className="flex items-center gap-1">
+                        <Heart className="h-3 w-3" />
+                        <span>{video.stats?.likes?.toLocaleString() || 0} likes</span>
                       </div>
-
-                      <div className="text-center sm:col-span-1 col-span-2">
-                        <div className="flex items-center justify-center gap-1 mb-1">
-                          <Share2 className="h-4 w-4 text-primary" />
-                          <span className="font-semibold">
-                            {Object.values(video.shares).reduce((sum: number, shares: any) => sum + shares, 0).toLocaleString()}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Partages</p>
+                      <div className="flex items-center gap-1">
+                        <Share className="h-3 w-3" />
+                        <span>{video.stats?.shares?.toLocaleString() || 0} partages</span>
                       </div>
                     </div>
                   )}
 
-                  {video.status === "processing" && (
-                    <div className="pt-4 border-t border-border/50">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                        <span className="text-sm text-muted-foreground">
-                          Génération et publication en cours...
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {video.status === "failed" && (
-                    <div className="pt-4 border-t border-border/50">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-destructive">
-                          Échec de la génération ou publication
-                        </span>
-                        <Button variant="outline" size="sm">
-                          Réessayer
+                  <div className="flex items-center justify-between border-t pt-2">
+                    <Button variant="ghost" size="sm">
+                      <Play className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => downloadVideo(video)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      </div>
-                    </div>
-                  )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem>
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Voir l'URL
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
-
-      {filteredVideos.length === 0 && (
-        <Card className="glass-card border-0">
-          <CardContent className="p-12 text-center">
-            <Video className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="font-semibold text-lg mb-2">Aucune vidéo trouvée</h3>
-            <p className="text-muted-foreground">
-              Essayez de modifier vos filtres ou créez votre première vidéo.
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

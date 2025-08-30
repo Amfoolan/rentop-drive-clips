@@ -13,6 +13,7 @@ import {
   Play
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useGeneratedVideos } from "@/hooks/useGeneratedVideos";
 
 interface CarData {
   title: string;
@@ -31,6 +32,7 @@ interface CarData {
 
 export function UrlVideoGenerator() {
   const { toast } = useToast();
+  const { saveVideo } = useGeneratedVideos();
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [carData, setCarData] = useState<CarData | null>(null);
@@ -153,18 +155,44 @@ export function UrlVideoGenerator() {
   const handleGenerateVideo = async () => {
     if (!carData) return;
     
+    setIsLoading(true);
+    
+    // Simuler la génération de vidéo
     toast({
-      title: "Génération vidéo lancée",
-      description: "La vidéo TikTok est en cours de création...",
+      title: "Génération en cours",
+      description: "Votre vidéo TikTok est en cours de création..."
     });
     
-    // Here would be the actual video generation logic
-    setTimeout(() => {
-      toast({
-        title: "Vidéo générée avec succès",
-        description: "Votre vidéo TikTok est prête !",
+    // Simulation d'un délai de génération
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Sauvegarder la vidéo dans la base de données
+    try {
+      await saveVideo({
+        title: carData.title,
+        url: url,
+        car_data: carData,
+        overlay_text: overlayText,
+        voiceover_text: voiceOverText,
+        status: 'generated',
+        platforms: [],
+        stats: { views: 0, likes: 0, shares: 0 }
       });
-    }, 3000);
+      
+      toast({
+        title: "Vidéo générée et sauvegardée !",
+        description: "Votre vidéo TikTok est prête et disponible dans l'historique"
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur de sauvegarde",
+        description: "La vidéo a été générée mais n'a pas pu être sauvegardée"
+      });
+    }
+    
+    setIsLoading(false);
+    setShowPreview(true);
   };
 
   return (
