@@ -186,9 +186,10 @@ function extractCarData(html: string, url: string): CarData | null {
         // Clean up the price number
         const priceNumber = match[1].replace(/,/g, '');
         if (parseInt(priceNumber) > 0) {
-          price = `AED ${match[1]}`;
+          // Format price in French
+          price = `À partir de ${match[1]} AED/jour`;
           console.log(`✅ Found price with pattern ${i + 1}:`, price);
-          console.log(`   Match details: ${match[0].substring(0, 100)}...`);
+          console.log(`   Original match: ${match[0].substring(0, 100)}...`);
           break;
         }
       }
@@ -216,9 +217,9 @@ function extractCarData(html: string, url: string): CarData | null {
             if (priceMatch && priceMatch[1]) {
               const priceNum = parseInt(priceMatch[1]);
               if (priceNum >= 50 && priceNum <= 5000) {
-                price = `AED ${priceMatch[1]}`;
+                price = `À partir de ${priceMatch[1]} AED/jour`;
                 console.log(`✅ Found price with aggressive pattern ${i + 1}:`, price);
-                console.log(`   Match: ${match}`);
+                console.log(`   Original match: ${match}`);
                 break;
               }
             }
@@ -238,7 +239,7 @@ function extractCarData(html: string, url: string): CarData | null {
       const titlePriceMatch = searchText.match(/AED\s*(\d+(?:,\d{3})*)/i);
       
       if (titlePriceMatch) {
-        price = `AED ${titlePriceMatch[1]}`;
+        price = `À partir de ${titlePriceMatch[1]} AED/jour`;
         console.log('✅ Found price in title/meta:', price);
       }
     }
