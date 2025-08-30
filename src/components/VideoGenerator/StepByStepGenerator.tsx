@@ -138,7 +138,7 @@ export function StepByStepGenerator() {
               setVideoConfig(prev => ({
                 ...prev,
                 overlayText: `${carName} • Réserve sur Rentop.co`,
-                voiceOverText: `Découvre la ${carName} disponible à ${data.location}. ${data.specs.horsepower} chevaux, moteur ${data.specs.engine}. À partir de ${data.price} par jour. Réserve maintenant sur Rentop.co !`
+                voiceOverText: `Découvre la ${carName} disponible à ${data.location}. ${data.price}. Réserve maintenant sur Rentop.co !`
               }));
               nextStep();
             }}
