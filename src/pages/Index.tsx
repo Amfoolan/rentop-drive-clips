@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Dashboard } from "@/components/Dashboard";
-import { UrlVideoGenerator } from "@/components/UrlVideoGenerator";
+import { StepByStepGenerator } from "@/components/VideoGenerator/StepByStepGenerator";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Link, BarChart3 } from "lucide-react";
+import { Wand2, BarChart3 } from "lucide-react";
 import heroImage from "@/assets/hero-image.jpg";
 
 const Index = () => {
@@ -32,8 +32,8 @@ const Index = () => {
         <Tabs defaultValue="url-generator" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="url-generator" className="flex items-center gap-2">
-              <Link className="h-4 w-4" />
-              Générateur URL
+              <Wand2 className="h-4 w-4" />
+              Créateur de Vidéos
             </TabsTrigger>
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -42,7 +42,7 @@ const Index = () => {
           </TabsList>
           
           <TabsContent value="url-generator">
-            <UrlVideoGenerator />
+            <StepByStepGenerator />
           </TabsContent>
           
           <TabsContent value="dashboard">

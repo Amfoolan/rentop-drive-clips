@@ -67,51 +67,19 @@ export const useGeneratedVideos = () => {
 
   const downloadVideo = async (video: GeneratedVideo) => {
     try {
-      if (!video.video_file_path) {
-        // Pour l'instant, on crée un fichier de démonstration
-        const demoContent = `Vidéo générée: ${video.title}\nURL: ${video.url}\nDate: ${new Date(video.created_at).toLocaleDateString()}\nTexte overlay: ${video.overlay_text}\nTexte voix-off: ${video.voiceover_text}`;
-        
-        const blob = new Blob([demoContent], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${video.title.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        
-        toast({
-          title: "Téléchargement",
-          description: "Fichier de démonstration téléchargé"
-        });
-      } else {
-        // Code pour télécharger le vrai fichier vidéo depuis Supabase Storage
-        const { data, error } = await supabase.storage
-          .from('videos')
-          .download(video.video_file_path);
-
-        if (error) throw error;
-
-        const url = window.URL.createObjectURL(data);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${video.title}.mp4`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        
-        toast({
-          title: "Téléchargement",
-          description: "Vidéo téléchargée avec succès"
-        });
-      }
+      // Import VideoDownloader dynamically to avoid circular deps
+      const { VideoDownloader } = await import('@/components/VideoGenerator/VideoDownloader');
+      await VideoDownloader.downloadVideo(video);
+      
+      toast({
+        title: "Téléchargement réussi",
+        description: "Votre vidéo a été téléchargée"
+      });
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de télécharger la vidéo"
+        title: "Erreur de téléchargement",
+        description: error.message || "Impossible de télécharger la vidéo"
       });
     }
   };
