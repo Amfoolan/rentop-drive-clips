@@ -58,9 +58,10 @@ export function UrlInputStep({ onDataExtracted }: UrlInputStepProps) {
         console.log('Web fetch failed:', fetchError);
       }
       
-      // Only proceed if we have real extracted data
-      if (!extractedData || extractedData.images.length < 5) {
-        throw new Error("Impossible d'extraire suffisamment d'images de cette page Rentop (minimum 5 requis). Vérifiez que l'URL contient une voiture avec plusieurs photos.");
+      // Only proceed if we have real extracted data with minimum 3 images
+      if (!extractedData || extractedData.images.length < 3) {
+        const imageCount = extractedData ? extractedData.images.length : 0;
+        throw new Error(`Impossible d'extraire suffisamment d'images de cette page Rentop (${imageCount} trouvées, minimum 3 requis). Certains listings ont seulement 3-4 photos. Vérifiez que l'URL contient une voiture avec plusieurs photos.`);
       }
 
       toast({
@@ -125,7 +126,7 @@ export function UrlInputStep({ onDataExtracted }: UrlInputStepProps) {
             </div>
             <p className="text-sm text-blue-700">
               Seules les vraies données (prix, titre, photos) seront extraites directement de la page Rentop. 
-              Un minimum de 5 photos est requis pour créer la vidéo.
+              Un minimum de 3 photos est requis pour créer la vidéo (certains listings n'ont que 3-4 photos).
             </p>
           </div>
 

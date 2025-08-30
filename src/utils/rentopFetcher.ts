@@ -1,61 +1,51 @@
-// Function to extract images from HTML content - IMPROVED VERSION
+// Function to extract images from HTML content - COMPREHENSIVE DEBUG VERSION
 const extractImagesFromHTML = (html: string, baseUrl: string): string[] => {
   const images: string[] = [];
   
-  console.log('Starting image extraction from HTML...');
+  console.log('🔍 Starting comprehensive image extraction from HTML...');
+  console.log('📄 HTML content length:', html.length);
   
-  // Pattern 1: Look for URL-encoded Supabase storage URLs (most common)
+  // Pattern 1: Look for URL-encoded Supabase storage URLs (most common in Rentop)
+  console.log('🔍 Pattern 1: Searching for URL-encoded Supabase URLs...');
   const encodedSupabasePattern = /https%3A%2F%2Fhjkyepaqdsyqjvhqedha\.supabase\.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Frental_items_images%2F[^"&\s]+/g;
   let match;
+  let encodedCount = 0;
   
   while ((match = encodedSupabasePattern.exec(html)) !== null) {
     const decodedUrl = decodeURIComponent(match[0]);
     if (!images.includes(decodedUrl)) {
       images.push(decodedUrl);
-      console.log('Found encoded Supabase image:', decodedUrl);
+      encodedCount++;
+      console.log(`✅ Found encoded Supabase image ${encodedCount}:`, decodedUrl.substring(0, 100) + '...');
     }
   }
+  console.log(`📊 Pattern 1 found: ${encodedCount} images`);
   
   // Pattern 2: Look for direct Supabase URLs (already decoded)
+  console.log('🔍 Pattern 2: Searching for direct Supabase URLs...');
   const directSupabasePattern = /https:\/\/hjkyepaqdsyqjvhqedha\.supabase\.co\/storage\/v1\/object\/public\/rental_items_images\/[^"'\s]+/g;
+  let directCount = 0;
   
   while ((match = directSupabasePattern.exec(html)) !== null) {
     const imageUrl = match[0];
     if (!images.includes(imageUrl)) {
       images.push(imageUrl);
-      console.log('Found direct Supabase image:', imageUrl);
+      directCount++;
+      console.log(`✅ Found direct Supabase image ${directCount}:`, imageUrl.substring(0, 100) + '...');
     }
   }
+  console.log(`📊 Pattern 2 found: ${directCount} images`);
   
-  // Pattern 3: Look for Rentop _next/image URLs that wrap Supabase URLs
-  const nextImagePattern = /src="([^"]*_next\/image[^"]*url=([^"&]+)[^"]*)"/g;
+  // Pattern 3: Look for ALL img tags with car-related alt text
+  console.log('🔍 Pattern 3: Searching for img tags with car alt text...');
+  const carImgPattern = /<img[^>]+alt="[^"]*(?:Rent|AUDI|BMW|Mercedes|Lamborghini|Ferrari|Porsche|car|vehicle|Q8|R8)[^"]*"[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  let carImgCount = 0;
   
-  while ((match = nextImagePattern.exec(html)) !== null) {
-    const fullUrl = match[1];
-    const encodedImageUrl = match[2];
-    
-    // Decode the inner image URL
-    try {
-      const decodedImageUrl = decodeURIComponent(encodedImageUrl);
-      if (decodedImageUrl.includes('supabase.co') && decodedImageUrl.includes('rental_items_images')) {
-        if (!images.includes(decodedImageUrl)) {
-          images.push(decodedImageUrl);
-          console.log('Found _next/image wrapped URL:', decodedImageUrl);
-        }
-      }
-    } catch (e) {
-      console.log('Failed to decode URL:', encodedImageUrl);
-    }
-  }
-  
-  // Pattern 4: Generic img src patterns for car images
-  const imgPattern = /<img[^>]+src=["']([^"']+)["'][^>]*alt="[^"]*(?:Rent|AUDI|BMW|Mercedes|car|vehicle)[^"]*"/gi;
-  
-  while ((match = imgPattern.exec(html)) !== null) {
+  while ((match = carImgPattern.exec(html)) !== null) {
     let imageUrl = match[1];
     
-    // Skip logos, icons, and non-car images
-    if (imageUrl.includes('logo') || imageUrl.includes('icon') || imageUrl.includes('brand')) {
+    // Skip logos, icons, and brand images
+    if (imageUrl.includes('logo') || imageUrl.includes('icon') || imageUrl.includes('/brand')) {
       continue;
     }
     
@@ -66,32 +56,81 @@ const extractImagesFromHTML = (html: string, baseUrl: string): string[] => {
       imageUrl = 'https://www.rentop.co' + imageUrl;
     }
     
-    // Only include high-quality car images
-    if (imageUrl.includes('supabase.co') || 
-        imageUrl.includes('rental_items_images') ||
-        (imageUrl.includes('rentop.co') && imageUrl.includes('_next/image'))) {
-      if (!images.includes(imageUrl)) {
-        images.push(imageUrl);
-        console.log('Found generic car image:', imageUrl);
-      }
+    if (!images.includes(imageUrl)) {
+      images.push(imageUrl);
+      carImgCount++;
+      console.log(`✅ Found car img tag ${carImgCount}:`, imageUrl.substring(0, 100) + '...');
     }
   }
+  console.log(`📊 Pattern 3 found: ${carImgCount} images`);
   
-  console.log(`Total images extracted: ${images.length}`);
+  // Pattern 4: Look for ANY img src that contains rental_items_images
+  console.log('🔍 Pattern 4: Searching for any rental_items_images...');
+  const rentalImgPattern = /<img[^>]+src=["']([^"']*rental_items_images[^"']*)["'][^>]*>/gi;
+  let rentalCount = 0;
   
-  // Remove duplicates and return first 15 images
-  const uniqueImages = [...new Set(images)].slice(0, 15);
-  console.log(`Unique images after deduplication: ${uniqueImages.length}`);
+  while ((match = rentalImgPattern.exec(html)) !== null) {
+    let imageUrl = match[1];
+    
+    // Convert relative URLs to absolute
+    if (imageUrl.startsWith('//')) {
+      imageUrl = 'https:' + imageUrl;
+    } else if (imageUrl.startsWith('/')) {
+      imageUrl = 'https://www.rentop.co' + imageUrl;
+    }
+    
+    if (!images.includes(imageUrl)) {
+      images.push(imageUrl);
+      rentalCount++;
+      console.log(`✅ Found rental items image ${rentalCount}:`, imageUrl.substring(0, 100) + '...');
+    }
+  }
+  console.log(`📊 Pattern 4 found: ${rentalCount} images`);
+  
+  // Pattern 5: Look for _next/image wrapped URLs
+  console.log('🔍 Pattern 5: Searching for _next/image URLs...');
+  const nextImagePattern = /_next\/image\?url=([^&"']+)/g;
+  let nextCount = 0;
+  
+  while ((match = nextImagePattern.exec(html)) !== null) {
+    try {
+      const decodedUrl = decodeURIComponent(match[1]);
+      if (decodedUrl.includes('supabase.co') && decodedUrl.includes('rental_items_images')) {
+        if (!images.includes(decodedUrl)) {
+          images.push(decodedUrl);
+          nextCount++;
+          console.log(`✅ Found _next/image URL ${nextCount}:`, decodedUrl.substring(0, 100) + '...');
+        }
+      }
+    } catch (e) {
+      console.log('❌ Failed to decode URL:', match[1]);
+    }
+  }
+  console.log(`📊 Pattern 5 found: ${nextCount} images`);
+  
+  // Final results
+  const uniqueImages = [...new Set(images)].slice(0, 20);
+  console.log(`🎯 FINAL RESULTS:`);
+  console.log(`   Total images found: ${images.length}`);
+  console.log(`   Unique images: ${uniqueImages.length}`);
+  console.log(`   Returning: ${uniqueImages.length} images`);
+  
+  // Log first few URLs for debugging
+  uniqueImages.slice(0, 3).forEach((url, i) => {
+    console.log(`   Image ${i + 1}: ${url.substring(0, 120)}...`);
+  });
   
   return uniqueImages;
 };
 
-// Function to extract real data from HTML content - IMPROVED VERSION
+// Function to extract real data from HTML content - IMPROVED WITH DEBUG
 export const extractRentopDataFromHTML = (html: string, url: string) => {
   try {
-    console.log('Extracting real data from HTML, content length:', html.length);
+    console.log('🚀 Starting data extraction from Rentop HTML...');
+    console.log('📄 URL:', url);
+    console.log('📄 HTML content length:', html.length);
     
-    // Extract car title from the page - look for the main heading
+    // Extract car title from the page
     let title = '';
     const titlePatterns = [
       /<h1[^>]*>([^<]*Rent[^<]*?(?:AUDI|BMW|Mercedes|Lamborghini|Ferrari|Porsche)[^<]*)<\/h1>/i,
@@ -100,7 +139,9 @@ export const extractRentopDataFromHTML = (html: string, url: string) => {
       /<title[^>]*>([^<]*Rent[^<]*)</i
     ];
     
-    for (const pattern of titlePatterns) {
+    console.log('🔍 Searching for title...');
+    for (let i = 0; i < titlePatterns.length; i++) {
+      const pattern = titlePatterns[i];
       const match = html.match(pattern);
       if (match && match[1].trim()) {
         title = match[1].trim()
@@ -109,12 +150,16 @@ export const extractRentopDataFromHTML = (html: string, url: string) => {
           .replace(/^rent\s+/i, '')
           .replace(/\s+in\s+(dubai|uae|united arab emirates)$/i, '');
         
-        console.log('Found title:', title);
+        console.log(`✅ Found title with pattern ${i + 1}:`, title);
         break;
       }
     }
     
-    // Extract price in AED from the page - MUST FIND REAL PRICE
+    if (!title) {
+      console.log('❌ No title found');
+    }
+    
+    // Extract price in AED from the page
     let price = '';
     const pricePatterns = [
       /From\s+AED\s*&nbsp;\s*(\d+(?:,\d{3})*)/i,
@@ -124,41 +169,52 @@ export const extractRentopDataFromHTML = (html: string, url: string) => {
       /(\d+(?:,\d{3})*)\s*AED/i
     ];
     
-    for (const pattern of pricePatterns) {
+    console.log('🔍 Searching for price...');
+    for (let i = 0; i < pricePatterns.length; i++) {
+      const pattern = pricePatterns[i];
       const match = html.match(pattern);
       if (match && match[1]) {
         price = `AED ${match[1]}`;
-        console.log('Found price:', price);
+        console.log(`✅ Found price with pattern ${i + 1}:`, price);
         break;
       }
     }
     
-    // Extract images from the HTML
-    const images = extractImagesFromHTML(html, url);
-    console.log('Images extracted:', images.length);
+    if (!price) {
+      console.log('❌ No price found');
+    }
     
-    // Validation - require minimum data
-    if (!title || !price || images.length < 5) {
-      console.log('Insufficient data extracted:', { 
-        hasTitle: !!title, 
-        hasPrice: !!price, 
-        imageCount: images.length 
-      });
+    // Extract images from the HTML
+    console.log('🔍 Starting image extraction...');
+    const images = extractImagesFromHTML(html, url);
+    console.log('📊 Image extraction completed. Total images:', images.length);
+    
+    // Validation - require minimum data (reduced to 3 images minimum)
+    const hasTitle = !!title;
+    const hasPrice = !!price;
+    const hasMinImages = images.length >= 3;
+    
+    console.log('🔍 Validation check:');
+    console.log('   Has title:', hasTitle);
+    console.log('   Has price:', hasPrice);
+    console.log('   Has min images (3+):', hasMinImages, `(${images.length} found)`);
+    
+    if (!hasTitle || !hasPrice || !hasMinImages) {
+      console.log('❌ Insufficient data extracted - returning null');
       return null;
     }
     
-    // Extract additional specs from URL and HTML
+    // Extract additional specs
     const yearMatch = url.match(/(\d{4})/) || html.match(/\((\d{4})\)/);
     const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
     
-    // Extract color from URL or title
     const colorFromUrl = url.match(/-([a-z]+)(-|$)/);
     const colorFromTitle = title.match(/\b(white|black|red|blue|yellow|green|silver|gray|grey)\b/i);
     const color = colorFromUrl ? 
       colorFromUrl[1].charAt(0).toUpperCase() + colorFromUrl[1].slice(1) : 
       (colorFromTitle ? colorFromTitle[1] : 'Non spécifié');
     
-    // Extract car brand and model for specs
+    // Extract car specs
     let horsepower = 'Non spécifié';
     let engine = 'Non spécifié';
     
@@ -186,16 +242,16 @@ export const extractRentopDataFromHTML = (html: string, url: string) => {
       }
     };
     
-    console.log('Successfully extracted complete data:', {
-      title: result.title,
-      price: result.price,
-      imageCount: result.images.length,
-      specs: result.specs
-    });
+    console.log('🎉 Successfully extracted complete data:');
+    console.log('   Title:', result.title);
+    console.log('   Price:', result.price);
+    console.log('   Images:', result.images.length);
+    console.log('   Year:', result.specs.year);
+    console.log('   Color:', result.specs.color);
     
     return result;
   } catch (error) {
-    console.error('Error extracting from HTML:', error);
+    console.error('💥 Error extracting from HTML:', error);
     return null;
   }
 };
