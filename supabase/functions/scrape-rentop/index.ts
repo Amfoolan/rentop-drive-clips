@@ -151,50 +151,95 @@ function extractCarData(html: string, url: string): CarData | null {
       }
     }
     
-    // Extract price - improved patterns for Rentop
+    // Extract price - improved patterns specifically for Rentop
     let price = '';
-    const pricePatterns = [
+    console.log('🔍 Searching for price in HTML...');
+    
+    // First, look for the main price display patterns
+    const mainPricePatterns = [
+      // Pattern 1: "From AED 699" with various formatting
       /From\s+AED\s*&nbsp;\s*(\d+(?:,\d{3})*)/i,
       /From\s+AED\s*(\d+(?:,\d{3})*)/i,
+      
+      // Pattern 2: Direct AED amount
       /AED\s*&nbsp;\s*(\d+(?:,\d{3})*)/i,
       /AED\s*(\d+(?:,\d{3})*)/i,
-      /"price":\s*"AED\s*(\d+(?:,\d{3})*)/i,
-      /class="[^"]*price[^"]*"[^>]*>[^<]*AED[^<]*(\d+(?:,\d{3})*)/i,
-      /per\s+day[^<]*(\d+)/i
+      
+      // Pattern 3: In price containers/divs
+      /<[^>]*class="[^"]*price[^"]*"[^>]*>[^<]*AED[^<]*?(\d+(?:,\d{3})*)/i,
+      /<[^>]*class="[^"]*font-medium[^"]*"[^>]*>[^<]*AED[^<]*?(\d+(?:,\d{3})*)/i,
+      
+      // Pattern 4: Per day pricing
+      /(\d+(?:,\d{3})*)[^<]*?per\s+day/i,
+      /(\d+(?:,\d{3})*)[^<]*?\/jour/i,
+      /(\d+(?:,\d{3})*)[^<]*?\/day/i,
+      
+      // Pattern 5: Badge or highlighted price
+      /<badge[^>]*>[^<]*AED[^<]*?(\d+(?:,\d{3})*)/i,
+      /<span[^>]*>[^<]*AED[^<]*?(\d+(?:,\d{3})*)/i,
     ];
     
-    console.log('🔍 Searching for price...');
-    for (let i = 0; i < pricePatterns.length; i++) {
-      const pattern = pricePatterns[i];
+    for (let i = 0; i < mainPricePatterns.length; i++) {
+      const pattern = mainPricePatterns[i];
       const match = html.match(pattern);
       if (match && match[1]) {
-        price = `AED ${match[1]}`;
-        console.log(`✅ Found price with pattern ${i + 1}:`, price);
-        break;
+        // Clean up the price number
+        const priceNumber = match[1].replace(/,/g, '');
+        if (parseInt(priceNumber) > 0) {
+          price = `AED ${match[1]}`;
+          console.log(`✅ Found price with pattern ${i + 1}:`, price);
+          console.log(`   Match details: ${match[0].substring(0, 100)}...`);
+          break;
+        }
       }
     }
     
-    // If no AED price found, look for any price format
+    // If still no price found, try more aggressive patterns
     if (!price) {
-      console.log('🔍 No AED price found, trying general patterns...');
-      const generalPricePatterns = [
-        /(\d+(?:,\d{3})*)\s*AED/i,
-        /(\d+(?:,\d{3})*)\s*€/i,
-        /\$(\d+(?:,\d{3})*)/i,
-        /(\d+(?:,\d{3})*)\s*per\s+day/i
+      console.log('🔍 No price found with main patterns, trying aggressive search...');
+      
+      // Look for any number followed by AED or preceded by AED
+      const aggressivePatterns = [
+        /(\d{2,4})\s*AED/i,
+        /AED\s*(\d{2,4})/i,
+        /(\d{2,4})[^<]*?\/jour/i,
+        /(\d{2,4})[^<]*?per\s*day/i,
       ];
       
-      for (let i = 0; i < generalPricePatterns.length; i++) {
-        const pattern = generalPricePatterns[i];
-        const match = html.match(pattern);
-        if (match && match[1]) {
-          const currency = pattern.toString().includes('AED') ? 'AED' : 
-                          pattern.toString().includes('€') ? '€' : 
-                          pattern.toString().includes('$') ? '$' : '';
-          price = `${currency} ${match[1]}${pattern.toString().includes('per day') ? '/jour' : ''}`;
-          console.log(`✅ Found general price with pattern ${i + 1}:`, price);
-          break;
+      for (let i = 0; i < aggressivePatterns.length; i++) {
+        const pattern = aggressivePatterns[i];
+        const matches = html.match(new RegExp(pattern.source, 'gi'));
+        if (matches && matches.length > 0) {
+          // Take the first reasonable price (between 50 and 5000 AED per day)
+          for (const match of matches) {
+            const priceMatch = match.match(pattern);
+            if (priceMatch && priceMatch[1]) {
+              const priceNum = parseInt(priceMatch[1]);
+              if (priceNum >= 50 && priceNum <= 5000) {
+                price = `AED ${priceMatch[1]}`;
+                console.log(`✅ Found price with aggressive pattern ${i + 1}:`, price);
+                console.log(`   Match: ${match}`);
+                break;
+              }
+            }
+          }
+          if (price) break;
         }
+      }
+    }
+    
+    // Last resort: extract from page title or meta description
+    if (!price) {
+      console.log('🔍 Still no price, checking page title and meta...');
+      const titleMatch = html.match(/<title[^>]*>([^<]*)</i);
+      const metaMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i);
+      
+      const searchText = (titleMatch ? titleMatch[1] : '') + ' ' + (metaMatch ? metaMatch[1] : '');
+      const titlePriceMatch = searchText.match(/AED\s*(\d+(?:,\d{3})*)/i);
+      
+      if (titlePriceMatch) {
+        price = `AED ${titlePriceMatch[1]}`;
+        console.log('✅ Found price in title/meta:', price);
       }
     }
     
