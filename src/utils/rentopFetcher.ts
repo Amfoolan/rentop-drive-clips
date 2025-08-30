@@ -108,8 +108,38 @@ const extractImagesFromHTML = (html: string, baseUrl: string): string[] => {
   }
   console.log(`📊 Pattern 5 found: ${nextCount} images`);
   
-  // Pattern 6: Look for direct img src with Supabase URLs
-  console.log('🔍 Pattern 6: Searching for img src with Supabase URLs...');
+  // Pattern 6: Look for img src with _next/image URLs (MOST EFFECTIVE for Rentop)
+  console.log('🔍 Pattern 6: Searching for img src with _next/image URLs...');
+  const imgNextPattern = /<img[^>]+src=["']([^"']*_next\/image[^"']*)["'][^>]*>/gi;
+  let imgNextCount = 0;
+  
+  while ((match = imgNextPattern.exec(html)) !== null) {
+    let imageUrl = match[1];
+    console.log(`🔍 Found img with _next/image: ${imageUrl.substring(0, 150)}...`);
+    
+    // Extract the encoded URL from _next/image?url=...
+    const urlMatch = imageUrl.match(/url=([^&]+)/);
+    if (urlMatch) {
+      try {
+        const decodedUrl = decodeURIComponent(urlMatch[1]);
+        console.log(`🔍 Decoded URL: ${decodedUrl.substring(0, 100)}...`);
+        
+        if (decodedUrl.includes('supabase.co') && decodedUrl.includes('rental_items_images')) {
+          if (!images.includes(decodedUrl)) {
+            images.push(decodedUrl);
+            imgNextCount++;
+            console.log(`✅ Found _next/image in img src ${imgNextCount}:`, decodedUrl.substring(0, 100) + '...');
+          }
+        }
+      } catch (e) {
+        console.log('❌ Failed to decode URL from img src:', urlMatch[1]);
+      }
+    }
+  }
+  console.log(`📊 Pattern 6 found: ${imgNextCount} images`);
+  
+  // Pattern 7: Look for direct img src with Supabase URLs
+  console.log('🔍 Pattern 7: Searching for img src with Supabase URLs...');
   const imgSrcPattern = /<img[^>]+src=["']([^"']*supabase\.co[^"']*)["'][^>]*>/gi;
   let srcCount = 0;
   
