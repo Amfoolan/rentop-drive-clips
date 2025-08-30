@@ -76,6 +76,15 @@ export function StepByStepGenerator() {
     photoEffect: 'effect-1'
   });
 
+  const handleImageOrderChange = (images: string[]) => {
+    if (carData) {
+      setCarData({
+        ...carData,
+        images: images
+      });
+    }
+  };
+
   const nextStep = () => {
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
@@ -163,6 +172,7 @@ export function StepByStepGenerator() {
               // Go back to URL step to retry extraction
               setCurrentStep(1);
             }}
+            onImageOrderChange={handleImageOrderChange}
           />
         )}
         

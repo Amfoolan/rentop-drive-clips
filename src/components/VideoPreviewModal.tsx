@@ -81,7 +81,7 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
     }
   };
 
-  const mockImages = carData?.images?.slice(0, 4) || [
+  const mockImages = carData?.images || [
     "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&h=600&fit=crop",
     "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=400&h=600&fit=crop", 
     "https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?w=400&h=600&fit=crop",
