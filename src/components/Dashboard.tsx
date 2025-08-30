@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Play, 
-  Settings, 
+  Settings as SettingsIcon, 
   BarChart3, 
   Clock, 
   Video, 
@@ -19,6 +19,7 @@ import { VideoPreview } from "./VideoPreview";
 import { ConfigurationPanel } from "./ConfigurationPanel";
 import { MetricsPanel } from "./MetricsPanel";
 import { VideoHistory } from "./VideoHistory";
+import { Settings } from "./Settings";
 
 const mockStats = {
   totalVideos: 142,
@@ -133,11 +134,12 @@ export function Dashboard() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 glass-card border-0">
+        <TabsList className="grid w-full grid-cols-5 glass-card border-0">
           <TabsTrigger value="overview">Aperçu</TabsTrigger>
           <TabsTrigger value="create">Créer</TabsTrigger>
           <TabsTrigger value="history">Historique</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="settings">Réglages</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -193,7 +195,7 @@ export function Dashboard() {
             <Card className="glass-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
+                  <SettingsIcon className="h-5 w-5" />
                   Actions rapides
                 </CardTitle>
               </CardHeader>
@@ -203,7 +205,7 @@ export function Dashboard() {
                   Nouvelle vidéo
                 </Button>
                 <Button variant="outline" className="w-full">
-                  <Settings className="mr-2 h-4 w-4" />
+                  <SettingsIcon className="mr-2 h-4 w-4" />
                   Configuration
                 </Button>
                 <Button variant="outline" className="w-full">
@@ -255,6 +257,10 @@ export function Dashboard() {
 
         <TabsContent value="analytics">
           <MetricsPanel />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <Settings />
         </TabsContent>
       </Tabs>
     </div>
