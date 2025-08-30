@@ -14,12 +14,16 @@ interface VoiceSettingsProps {
 }
 
 const elevenLabsVoices = [
-  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", description: "Voix féminine claire et professionnelle" },
-  { id: "9BWtsMINqrJLrRacOk9x", name: "Aria", description: "Voix féminine expressive et naturelle" },
-  { id: "CwhRBWXzGAHq8TQ4Fs17", name: "Roger", description: "Voix masculine mature et confiante" },
-  { id: "TX3LPaxmHKxFdv7VOQHJ", name: "Liam", description: "Voix masculine jeune et énergique" },
-  { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", description: "Voix féminine douce et apaisante" },
-  { id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", description: "Voix masculine profonde et autoritaire" }
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", description: "Voix féminine claire et professionnelle", gender: "Féminin" },
+  { id: "9BWtsMINqrJLrRacOk9x", name: "Aria", description: "Voix féminine expressive et naturelle", gender: "Féminin" },
+  { id: "CwhRBWXzGAHq8TQ4Fs17", name: "Roger", description: "Voix masculine mature et confiante", gender: "Masculin" },
+  { id: "TX3LPaxmHKxFdv7VOQHJ", name: "Liam", description: "Voix masculine jeune et énergique", gender: "Masculin" },
+  { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", description: "Voix féminine douce et apaisante", gender: "Féminin" },
+  { id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", description: "Voix masculine profonde et autoritaire", gender: "Masculin" },
+  { id: "cgSgspJ2msm6clMCkdW9", name: "Jessica", description: "Voix féminine professionnelle", gender: "Féminin" },
+  { id: "iP95p4xoKVk53GoZ742B", name: "Chris", description: "Voix masculine claire", gender: "Masculin" },
+  { id: "XB0fDUnXU5powFXDhCwa", name: "Charlotte", description: "Voix féminine élégante", gender: "Féminin" },
+  { id: "bIHbv24MWmeRgasZH58o", name: "Will", description: "Voix masculine chaleureuse", gender: "Masculin" }
 ];
 
 export function VoiceSettings({ config, onConfigChange }: VoiceSettingsProps) {
@@ -67,8 +71,13 @@ export function VoiceSettings({ config, onConfigChange }: VoiceSettingsProps) {
                 {elevenLabsVoices.map((voice) => (
                   <SelectItem key={voice.id} value={voice.id}>
                     <div className="flex items-center gap-3">
-                      <span className="font-medium">{voice.name}</span>
-                      <span className="text-xs text-muted-foreground">{voice.description}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {voice.gender}
+                      </Badge>
+                      <div>
+                        <span className="font-medium">{voice.name}</span>
+                        <p className="text-xs text-muted-foreground">{voice.description}</p>
+                      </div>
                     </div>
                   </SelectItem>
                 ))}
@@ -78,7 +87,12 @@ export function VoiceSettings({ config, onConfigChange }: VoiceSettingsProps) {
             <div className="bg-primary/10 rounded-lg p-3 border border-primary/20">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-primary">{selectedVoice.name}</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-medium text-primary">{selectedVoice.name}</p>
+                    <Badge variant="secondary" className="text-xs">
+                      {selectedVoice.gender}
+                    </Badge>
+                  </div>
                   <p className="text-sm text-muted-foreground">{selectedVoice.description}</p>
                 </div>
                 <Button 

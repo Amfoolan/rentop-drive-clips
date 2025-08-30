@@ -99,6 +99,40 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
                 </div>
               </div>
 
+              {/* Text Position Options */}
+              <div className="space-y-3">
+                <Label>Position du texte</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button 
+                    variant={config.textPosition === 'bottom-6' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => updateConfig({ textPosition: 'bottom-6' })}
+                    className="text-xs"
+                  >
+                    Bas
+                  </Button>
+                  <Button 
+                    variant={config.textPosition === 'bottom-20' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => updateConfig({ textPosition: 'bottom-20' })}
+                    className="text-xs"
+                  >
+                    Milieu-Bas
+                  </Button>
+                  <Button 
+                    variant={config.textPosition === 'bottom-32' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => updateConfig({ textPosition: 'bottom-32' })}
+                    className="text-xs"
+                  >
+                    Remonté
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Position "Remonté" laisse de la place pour la description des réseaux sociaux
+                </p>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="voiceover">Script de la voix-off</Label>
                 <Textarea

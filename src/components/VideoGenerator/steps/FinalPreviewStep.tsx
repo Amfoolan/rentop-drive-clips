@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
 import { 
   Play, 
   Pause, 
@@ -23,11 +26,26 @@ interface FinalPreviewStepProps {
   config: VideoConfig;
   onConfirm: () => void;
   onBack: () => void;
+  onConfigChange: (config: VideoConfig) => void;
 }
 
-export function FinalPreviewStep({ carData, config, onConfirm, onBack }: FinalPreviewStepProps) {
+const elevenLabsVoices = [
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", description: "Voix féminine claire et professionnelle", gender: "Féminin" },
+  { id: "9BWtsMINqrJLrRacOk9x", name: "Aria", description: "Voix féminine expressive et naturelle", gender: "Féminin" },
+  { id: "CwhRBWXzGAHq8TQ4Fs17", name: "Roger", description: "Voix masculine mature et confiante", gender: "Masculin" },
+  { id: "TX3LPaxmHKxFdv7VOQHJ", name: "Liam", description: "Voix masculine jeune et énergique", gender: "Masculin" },
+  { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", description: "Voix féminine douce et apaisante", gender: "Féminin" },
+  { id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", description: "Voix masculine profonde et autoritaire", gender: "Masculin" },
+  { id: "cgSgspJ2msm6clMCkdW9", name: "Jessica", description: "Voix féminine professionnelle", gender: "Féminin" },
+  { id: "iP95p4xoKVk53GoZ742B", name: "Chris", description: "Voix masculine claire", gender: "Masculin" },
+  { id: "XB0fDUnXU5powFXDhCwa", name: "Charlotte", description: "Voix féminine élégante", gender: "Féminin" },
+  { id: "bIHbv24MWmeRgasZH58o", name: "Will", description: "Voix masculine chaleureuse", gender: "Masculin" }
+];
+
+export function FinalPreviewStep({ carData, config, onConfirm, onBack, onConfigChange }: FinalPreviewStepProps) {
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [showFullText, setShowFullText] = useState(false);
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
 
   // Estimation des coûts et durée
   const estimatedDuration = Math.ceil(config.voiceOverText.length / 12); // ~12 caractères par seconde
@@ -37,6 +55,27 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack }: FinalPr
   const activeSocialNetworks = Object.entries(config.socialNetworks)
     .filter(([_, enabled]) => enabled)
     .map(([platform]) => platform);
+
+  const selectedVoice = elevenLabsVoices.find(v => v.id === config.voiceId) || elevenLabsVoices[0];
+
+  const updateVoiceSettings = (updates: Partial<VideoConfig['voiceSettings']>) => {
+    onConfigChange({
+      ...config,
+      voiceSettings: { ...config.voiceSettings, ...updates }
+    });
+  };
+
+  const updateVoiceId = (voiceId: string) => {
+    onConfigChange({ ...config, voiceId });
+  };
+
+  const testVoice = () => {
+    setIsTestingVoice(true);
+    // Simulate voice test
+    setTimeout(() => {
+      setIsTestingVoice(false);
+    }, 3000);
+  };
 
   return (
     <div className="space-y-6">
@@ -83,15 +122,122 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack }: FinalPr
           <Separator />
 
           {/* Résumé de la configuration */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* Informations vidéo */}
+            {/* Configuration Voix - Section étendue */}
             <div className="space-y-4">
               <h4 className="font-semibold flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Configuration vidéo
+                <Mic className="h-4 w-4" />
+                Configuration de la voix
               </h4>
               
+              {/* Voice Selection */}
+              <div className="bg-muted/20 rounded-lg p-4 space-y-4">
+                <div className="space-y-2">
+                  <Label>Choisir la voix</Label>
+                  <Select value={config.voiceId} onValueChange={updateVoiceId}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {elevenLabsVoices.map((voice) => (
+                        <SelectItem key={voice.id} value={voice.id}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {voice.gender}
+                            </Badge>
+                            <span className="font-medium">{voice.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Selected Voice Info */}
+                <div className="bg-primary/10 rounded-lg p-3 border border-primary/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium text-primary">{selectedVoice.name}</p>
+                        <Badge variant="secondary" className="text-xs">
+                          {selectedVoice.gender}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{selectedVoice.description}</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={testVoice}
+                      disabled={isTestingVoice}
+                      className="flex items-center gap-2"
+                    >
+                      {isTestingVoice ? (
+                        <>
+                          <Pause className="h-3 w-3" />
+                          Test...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-3 w-3" />
+                          Tester
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Voice Parameters */}
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm">Stabilité</Label>
+                      <Badge variant="outline" className="text-xs">{Math.round(config.voiceSettings.stability * 100)}%</Badge>
+                    </div>
+                    <Slider
+                      value={[config.voiceSettings.stability]}
+                      onValueChange={([value]) => updateVoiceSettings({ stability: value })}
+                      max={1}
+                      min={0}
+                      step={0.1}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm">Similarité</Label>
+                      <Badge variant="outline" className="text-xs">{Math.round(config.voiceSettings.similarity_boost * 100)}%</Badge>
+                    </div>
+                    <Slider
+                      value={[config.voiceSettings.similarity_boost]}
+                      onValueChange={([value]) => updateVoiceSettings({ similarity_boost: value })}
+                      max={1}
+                      min={0}
+                      step={0.1}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm">Vitesse</Label>
+                      <Badge variant="outline" className="text-xs">{config.voiceSettings.speed}x</Badge>
+                    </div>
+                    <Slider
+                      value={[config.voiceSettings.speed]}
+                      onValueChange={([value]) => updateVoiceSettings({ speed: value })}
+                      max={2}
+                      min={0.5}
+                      step={0.1}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Autres paramètres */}
               <div className="space-y-3">
                 <div className="bg-muted/20 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-2">
@@ -99,19 +245,6 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack }: FinalPr
                     <span className="text-sm font-medium">Texte de superposition</span>
                   </div>
                   <p className="text-sm">{config.overlayText}</p>
-                </div>
-                
-                <div className="bg-muted/20 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Mic className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Voix sélectionnée</span>
-                  </div>
-                  <p className="text-sm">{config.voiceId === 'EXAVITQu4vr4xnSDxMaL' ? 'Sarah (Féminine)' : 'Voix personnalisée'}</p>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Stabilité: {config.voiceSettings.stability} • 
-                    Similarité: {config.voiceSettings.similarity_boost} • 
-                    Vitesse: {config.voiceSettings.speed}x
-                  </div>
                 </div>
                 
                 <div className="bg-muted/20 rounded-lg p-3">

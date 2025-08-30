@@ -158,6 +158,12 @@ All colors MUST be HSL.
     }
   }
   
+  @keyframes panLeftRight {
+    0% { background-position: 0% center; }
+    50% { background-position: 20% center; }
+    100% { background-position: 0% center; }
+  }
+  
   .video-preview {
     aspect-ratio: 9/16;
     background: linear-gradient(45deg, #000 25%, transparent 25%), 

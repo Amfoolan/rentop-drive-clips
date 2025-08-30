@@ -40,6 +40,7 @@ export interface VideoConfig {
     tiktok: boolean;
     facebook: boolean;
   };
+  textPosition?: string;
 }
 
 const steps = [
@@ -67,7 +68,8 @@ export function StepByStepGenerator() {
       instagram: false,
       tiktok: true,
       facebook: false
-    }
+    },
+    textPosition: 'bottom-6'
   });
 
   const nextStep = () => {
@@ -175,6 +177,7 @@ export function StepByStepGenerator() {
             config={videoConfig}
             onConfirm={nextStep}
             onBack={prevStep}
+            onConfigChange={setVideoConfig}
           />
         )}
         

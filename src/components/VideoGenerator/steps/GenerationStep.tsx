@@ -176,10 +176,14 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
               <div className="space-y-4">
                 <h4 className="font-medium">Aperçu de la vidéo</h4>
                 <div className="relative bg-black rounded-lg overflow-hidden aspect-[9/16] max-w-[300px] mx-auto group">
-                  {/* Video Background with first car image */}
+                  {/* Video Background with animated pan effect */}
                   <div 
-                    className="absolute inset-0 bg-cover bg-center transition-all duration-500"
-                    style={{ backgroundImage: `url(${carData.images[0]})` }}
+                    className="absolute inset-0 bg-cover bg-center transition-all duration-500 animate-slow-pan"
+                    style={{ 
+                      backgroundImage: `url(${carData.images[0]})`,
+                      backgroundSize: '120%', // Zoom pour permettre l'effet pan
+                      animation: 'panLeftRight 8s ease-in-out infinite'
+                    }}
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40"></div>
                   </div>
@@ -187,12 +191,12 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                   {/* Aperçu muet indicator */}
                   <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
                     <div className="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
-                      <span className="text-white text-xs font-medium">Aperçu muet</span>
+                      <span className="text-white text-xs font-medium">Aperçu avec effet pan</span>
                     </div>
                   </div>
                   
-                  {/* Car Title and Info */}
-                  <div className="absolute bottom-6 left-4 right-4 z-10 space-y-3">
+                  {/* Car Title and Info - Position variable */}
+                  <div className={`absolute ${config.textPosition || 'bottom-6'} left-4 right-4 z-10 space-y-3`}>
                     <div className="text-center space-y-2">
                       {/* Car Name */}
                       <h3 className="text-white text-lg font-bold leading-tight drop-shadow-lg">
@@ -231,8 +235,21 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                 {/* Playback Status */}
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">
-                    ▶️ Cliquez pour prévisualiser • 🔇 Aperçu sans son
+                    🎬 Effet pan gauche-droite • 🔇 Aperçu sans son
                   </p>
+                </div>
+
+                {/* Add custom keyframes for the pan effect */}
+                <div className="hidden">
+                  <style dangerouslySetInnerHTML={{
+                    __html: `
+                      @keyframes panLeftRight {
+                        0% { background-position: 0% center; }
+                        50% { background-position: 20% center; }
+                        100% { background-position: 0% center; }
+                      }
+                    `
+                  }} />
                 </div>
               </div>
 
