@@ -34,3 +34,9 @@ port = 54327
 
 [functions.scrape-rentop]
 verify_jwt = false
+
+[functions.test-voice]
+verify_jwt = false
+
+[functions.validate-user]
+verify_jwt = false

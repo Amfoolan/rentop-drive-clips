@@ -58,10 +58,17 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
                 <Label>Style du texte overlay</Label>
                 <div className="grid grid-cols-1 gap-3">
                   {/* Style Option 1 - Clean */}
-                  <div className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                  <div 
+                    className={`border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.textStyle === 'clean' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => updateConfig({ textStyle: 'clean' })}
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">Style Clean</span>
-                      <div className="w-4 h-4 rounded-full border-2 border-primary bg-primary"></div>
+                      <div className={`w-4 h-4 rounded-full border-2 ${
+                        config.textStyle === 'clean' ? 'border-primary bg-primary' : 'border-muted'
+                      }`}></div>
                     </div>
                     <div className="bg-black/80 rounded p-3 text-center">
                       <div className="text-white text-sm font-bold">AUDI Q8 S Line Kit (2021) White</div>
@@ -73,10 +80,17 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
                   </div>
 
                   {/* Style Option 2 - Gradient */}
-                  <div className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors opacity-60">
+                  <div 
+                    className={`border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.textStyle === 'gradient' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => updateConfig({ textStyle: 'gradient' })}
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">Style Gradient</span>
-                      <div className="w-4 h-4 rounded-full border-2 border-muted"></div>
+                      <div className={`w-4 h-4 rounded-full border-2 ${
+                        config.textStyle === 'gradient' ? 'border-primary bg-primary' : 'border-muted'
+                      }`}></div>
                     </div>
                     <div className="bg-gradient-to-t from-black/90 to-transparent rounded p-3 text-center">
                       <div className="text-white text-sm font-bold">AUDI Q8 S Line Kit (2021) White</div>
@@ -87,14 +101,102 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
                   </div>
 
                   {/* Style Option 3 - Minimalist */}
-                  <div className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors opacity-60">
+                  <div 
+                    className={`border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.textStyle === 'minimalist' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => updateConfig({ textStyle: 'minimalist' })}
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">Style Minimalist</span>
-                      <div className="w-4 h-4 rounded-full border-2 border-muted"></div>
+                      <div className={`w-4 h-4 rounded-full border-2 ${
+                        config.textStyle === 'minimalist' ? 'border-primary bg-primary' : 'border-muted'
+                      }`}></div>
                     </div>
                     <div className="bg-white/10 backdrop-blur rounded p-3 text-center">
                       <div className="text-white text-sm font-semibold">AUDI Q8 • 699 AED/jour</div>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Photo Effects */}
+              <div className="space-y-3">
+                <Label>Effet des photos</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div 
+                    className={`border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.photoEffect === 'pan-left-right' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => updateConfig({ photoEffect: 'pan-left-right' })}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Panoramique G→D</span>
+                      <div className={`w-3 h-3 rounded-full border-2 ${
+                        config.photoEffect === 'pan-left-right' ? 'border-primary bg-primary' : 'border-muted'
+                      }`}></div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Mouvement de gauche à droite pour mieux voir la voiture</p>
+                  </div>
+
+                  <div 
+                    className={`border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.photoEffect === 'zoom-in' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => updateConfig({ photoEffect: 'zoom-in' })}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Zoom In</span>
+                      <div className={`w-3 h-3 rounded-full border-2 ${
+                        config.photoEffect === 'zoom-in' ? 'border-primary bg-primary' : 'border-muted'
+                      }`}></div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Zoom progressif vers l'intérieur</p>
+                  </div>
+
+                  <div 
+                    className={`border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.photoEffect === 'zoom-out' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => updateConfig({ photoEffect: 'zoom-out' })}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Zoom Out</span>
+                      <div className={`w-3 h-3 rounded-full border-2 ${
+                        config.photoEffect === 'zoom-out' ? 'border-primary bg-primary' : 'border-muted'
+                      }`}></div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Zoom progressif vers l'extérieur</p>
+                  </div>
+
+                  <div 
+                    className={`border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.photoEffect === 'fade' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => updateConfig({ photoEffect: 'fade' })}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Fade</span>
+                      <div className={`w-3 h-3 rounded-full border-2 ${
+                        config.photoEffect === 'fade' ? 'border-primary bg-primary' : 'border-muted'
+                      }`}></div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Transition en fondu entre les images</p>
+                  </div>
+
+                  <div 
+                    className={`border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.photoEffect === 'slide-up' ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => updateConfig({ photoEffect: 'slide-up' })}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Slide Up</span>
+                      <div className={`w-3 h-3 rounded-full border-2 ${
+                        config.photoEffect === 'slide-up' ? 'border-primary bg-primary' : 'border-muted'
+                      }`}></div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Glissement vertical des images</p>
                   </div>
                 </div>
               </div>
@@ -150,14 +252,22 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
 
               {/* Preview Box */}
               <div className="bg-muted/20 rounded-lg p-4 space-y-3">
-                <h4 className="font-medium text-sm">Aperçu des textes</h4>
+                <h4 className="font-medium text-sm">Aperçu des paramètres</h4>
                 <div className="space-y-2">
                   <div className="bg-primary/10 rounded p-2 border border-primary/20">
-                    <span className="text-xs text-primary font-medium">OVERLAY</span>
-                    <p className="text-sm">{config.overlayText || "Aucun texte d'overlay"}</p>
+                    <span className="text-xs text-primary font-medium">STYLE OVERLAY</span>
+                    <p className="text-sm capitalize">{config.textStyle}</p>
+                  </div>
+                  <div className="bg-secondary/10 rounded p-2 border border-secondary/20">
+                    <span className="text-xs text-secondary font-medium">EFFET PHOTO</span>
+                    <p className="text-sm">{config.photoEffect}</p>
                   </div>
                   <div className="bg-accent/10 rounded p-2 border border-accent/20">
-                    <span className="text-xs text-accent font-medium">VOIX-OFF</span>
+                    <span className="text-xs text-accent font-medium">TEXTE OVERLAY</span>
+                    <p className="text-sm">{config.overlayText || "Aucun texte d'overlay"}</p>
+                  </div>
+                  <div className="bg-muted/20 rounded p-2 border border-muted/40">
+                    <span className="text-xs text-muted-foreground font-medium">VOIX-OFF</span>
                     <p className="text-sm">{config.voiceOverText || "Aucun script de voix-off"}</p>
                   </div>
                 </div>

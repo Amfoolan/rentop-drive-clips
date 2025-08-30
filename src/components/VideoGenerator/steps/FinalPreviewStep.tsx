@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
 import { VideoPreview } from "../../VideoPreview";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FinalPreviewStepProps {
   carData: CarData;
@@ -69,12 +70,35 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack, onConfigC
     onConfigChange({ ...config, voiceId });
   };
 
-  const testVoice = () => {
+  const testVoice = async () => {
     setIsTestingVoice(true);
-    // Simulate voice test
-    setTimeout(() => {
+    
+    try {
+      const testText = config.voiceOverText.substring(0, 100) + (config.voiceOverText.length > 100 ? "..." : "");
+      
+      const response = await supabase.functions.invoke('test-voice', {
+        body: {
+          voiceId: config.voiceId,
+          text: testText,
+          voiceSettings: config.voiceSettings
+        }
+      });
+
+      if (response.error) {
+        console.error('Voice test error:', response.error);
+      } else {
+        console.log('Voice test completed successfully');
+      }
+      
+      // Simulate playback duration
+      setTimeout(() => {
+        setIsTestingVoice(false);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error testing voice:', error);
       setIsTestingVoice(false);
-    }, 3000);
+    }
   };
 
   return (

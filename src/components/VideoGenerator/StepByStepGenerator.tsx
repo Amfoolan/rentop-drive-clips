@@ -41,6 +41,8 @@ export interface VideoConfig {
     facebook: boolean;
   };
   textPosition?: string;
+  textStyle: 'clean' | 'gradient' | 'minimalist';
+  photoEffect: 'pan-left-right' | 'zoom-in' | 'zoom-out' | 'fade' | 'slide-up';
 }
 
 const steps = [
@@ -69,7 +71,9 @@ export function StepByStepGenerator() {
       tiktok: true,
       facebook: false
     },
-    textPosition: 'bottom-6'
+    textPosition: 'bottom-6',
+    textStyle: 'clean',
+    photoEffect: 'pan-left-right'
   });
 
   const nextStep = () => {
