@@ -14,7 +14,7 @@ import {
   Settings
 } from "lucide-react";
 
-const mockCarData = {
+const defaultCarData = {
   model: "Porsche 911 GT3 RS",
   images: [
     "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&h=600&fit=crop",
@@ -28,12 +28,35 @@ const mockCarData = {
   price: "280€/jour"
 };
 
-export function VideoPreview() {
+interface VideoPreviewProps {
+  images?: string[];
+  overlayText?: string;
+  voiceOverText?: string;
+  model?: string;
+  price?: string;
+}
+
+export function VideoPreview({ 
+  images, 
+  overlayText, 
+  voiceOverText, 
+  model, 
+  price 
+}: VideoPreviewProps = {}) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Use provided props or fallback to defaults
+  const carData = {
+    model: model || defaultCarData.model,
+    images: images || defaultCarData.images,
+    overlayText: overlayText || defaultCarData.overlayText,
+    voiceOver: voiceOverText || defaultCarData.voiceOver,
+    price: price || defaultCarData.price
+  };
 
   const handlePlayPause = () => {
     if (isPlaying) {
@@ -45,7 +68,7 @@ export function VideoPreview() {
       setIsPlaying(true);
       // Simulate video playback with image cycling
       intervalRef.current = setInterval(() => {
-        setCurrentImageIndex(prev => (prev + 1) % mockCarData.images.length);
+        setCurrentImageIndex(prev => (prev + 1) % carData.images.length);
         setProgress(prev => {
           const newProgress = prev + 2; // 2% per interval
           if (newProgress >= 100) {
@@ -77,22 +100,22 @@ export function VideoPreview() {
             {/* Current Image */}
             <div className="absolute inset-0 flex items-center justify-center">
               <img 
-                src={mockCarData.images[currentImageIndex]}
-                alt={`${mockCarData.model} - Image ${currentImageIndex + 1}`}
+                src={carData.images[currentImageIndex]}
+                alt={`${carData.model} - Image ${currentImageIndex + 1}`}
                 className="w-full h-full object-cover"
               />
               
               {/* Overlay Text */}
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
                 <h3 className="text-white font-bold text-xl mb-2">
-                  {mockCarData.overlayText.split(' • ')[0]}
+                  {carData.overlayText.split(' • ')[0]}
                 </h3>
                 <p className="text-white/90 text-sm">
-                  {mockCarData.overlayText.split(' • ')[1]}
+                  {carData.overlayText.split(' • ')[1]}
                 </p>
                 <div className="mt-2">
                   <Badge variant="secondary" className="bg-accent text-white">
-                    {mockCarData.price}
+                    {carData.price}
                   </Badge>
                 </div>
               </div>
@@ -114,7 +137,7 @@ export function VideoPreview() {
 
             {/* Progress Indicators */}
             <div className="absolute top-4 left-4 right-4 flex gap-1">
-              {mockCarData.images.map((_, index) => (
+              {carData.images.map((_, index) => (
                 <div
                   key={index}
                   className={`h-1 flex-1 rounded-full transition-all duration-300 ${
@@ -163,7 +186,7 @@ export function VideoPreview() {
           </div>
           <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
             <p className="text-sm text-muted-foreground italic">
-              "{mockCarData.voiceOver}"
+              "{carData.voiceOver}"
             </p>
           </div>
           <Progress value={progress} className="h-2" />
@@ -196,7 +219,7 @@ export function VideoPreview() {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Images</p>
-            <p className="font-medium">{mockCarData.images.length} photos</p>
+            <p className="font-medium">{carData.images.length} photos</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Voix</p>

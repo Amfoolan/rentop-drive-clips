@@ -1,4 +1,9 @@
+import { useState } from "react";
 import { Dashboard } from "@/components/Dashboard";
+import { UrlVideoGenerator } from "@/components/UrlVideoGenerator";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Link, BarChart3 } from "lucide-react";
 import heroImage from "@/assets/hero-image.jpg";
 
 const Index = () => {
@@ -16,14 +21,35 @@ const Index = () => {
               Rentop Video Creator
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Système de génération et publication automatique de vidéos TikTok pour location de voitures
+              Génération automatique de vidéos depuis les URLs Rentop
             </p>
           </div>
         </div>
       </div>
 
-      {/* Dashboard */}
-      <Dashboard />
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-8">
+        <Tabs defaultValue="url-generator" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="url-generator" className="flex items-center gap-2">
+              <Link className="h-4 w-4" />
+              Générateur URL
+            </TabsTrigger>
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="url-generator">
+            <UrlVideoGenerator />
+          </TabsContent>
+          
+          <TabsContent value="dashboard">
+            <Dashboard />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };
