@@ -87,7 +87,7 @@ const extractImagesFromHTML = (html: string, baseUrl: string): string[] => {
   }
   console.log(`📊 Pattern 4 found: ${rentalCount} images`);
   
-  // Pattern 5: Look for _next/image wrapped URLs
+  // Pattern 5: Look for _next/image wrapped URLs (MOST COMMON in Rentop)
   console.log('🔍 Pattern 5: Searching for _next/image URLs...');
   const nextImagePattern = /_next\/image\?url=([^&"']+)/g;
   let nextCount = 0;
@@ -107,6 +107,37 @@ const extractImagesFromHTML = (html: string, baseUrl: string): string[] => {
     }
   }
   console.log(`📊 Pattern 5 found: ${nextCount} images`);
+  
+  // Pattern 6: Look for direct img src with Supabase URLs
+  console.log('🔍 Pattern 6: Searching for img src with Supabase URLs...');
+  const imgSrcPattern = /<img[^>]+src=["']([^"']*supabase\.co[^"']*)["'][^>]*>/gi;
+  let srcCount = 0;
+  
+  while ((match = imgSrcPattern.exec(html)) !== null) {
+    let imageUrl = match[1];
+    
+    if (imageUrl.includes('rental_items_images')) {
+      // Handle _next/image URLs
+      if (imageUrl.includes('_next/image?url=')) {
+        const urlMatch = imageUrl.match(/url=([^&]+)/);
+        if (urlMatch) {
+          try {
+            imageUrl = decodeURIComponent(urlMatch[1]);
+          } catch (e) {
+            console.log('❌ Failed to decode nested URL:', urlMatch[1]);
+            continue;
+          }
+        }
+      }
+      
+      if (!images.includes(imageUrl)) {
+        images.push(imageUrl);
+        srcCount++;
+        console.log(`✅ Found img src URL ${srcCount}:`, imageUrl.substring(0, 100) + '...');
+      }
+    }
+  }
+  console.log(`📊 Pattern 6 found: ${srcCount} images`);
   
   // Final results
   const uniqueImages = [...new Set(images)].slice(0, 20);
