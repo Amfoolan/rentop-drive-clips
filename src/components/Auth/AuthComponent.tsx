@@ -19,6 +19,19 @@ export function AuthComponent() {
     e.preventDefault();
     setLoading(true);
 
+    // Liste des emails autorisés
+    const allowedEmails = ['rentop.co.ae@gmail.com', 'amine.ready@gmail.com'];
+    
+    if (!allowedEmails.includes(email.toLowerCase())) {
+      toast({
+        variant: "destructive",
+        title: "Accès refusé",
+        description: "Cette application est privée. Seuls les utilisateurs autorisés peuvent se connecter.",
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -45,6 +58,19 @@ export function AuthComponent() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // Liste des emails autorisés
+    const allowedEmails = ['rentop.co.ae@gmail.com', 'amine.ready@gmail.com'];
+    
+    if (!allowedEmails.includes(email.toLowerCase())) {
+      toast({
+        variant: "destructive",
+        title: "Accès refusé",
+        description: "Cette application est privée. Contactez l'administrateur pour obtenir l'accès.",
+      });
+      setLoading(false);
+      return;
+    }
 
     try {
       const { error } = await supabase.auth.signUp({
