@@ -14,7 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      generated_videos: {
+        Row: {
+          car_data: Json
+          created_at: string
+          id: string
+          overlay_text: string | null
+          platforms: Json | null
+          stats: Json | null
+          status: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          url: string
+          video_file_path: string | null
+          voiceover_text: string | null
+        }
+        Insert: {
+          car_data: Json
+          created_at?: string
+          id?: string
+          overlay_text?: string | null
+          platforms?: Json | null
+          stats?: Json | null
+          status?: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          url: string
+          video_file_path?: string | null
+          voiceover_text?: string | null
+        }
+        Update: {
+          car_data?: Json
+          created_at?: string
+          id?: string
+          overlay_text?: string | null
+          platforms?: Json | null
+          stats?: Json | null
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          url?: string
+          video_file_path?: string | null
+          voiceover_text?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
