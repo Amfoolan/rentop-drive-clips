@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Link, Loader2, AlertCircle } from "lucide-react";
+import { Link, Loader2, AlertCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CarData } from "../StepByStepGenerator";
+import { fetchRentopData } from "@/utils/rentopFetcher";
 
 interface UrlInputStepProps {
   onDataExtracted: (data: CarData) => void;
@@ -29,35 +30,17 @@ export function UrlInputStep({ onDataExtracted }: UrlInputStepProps) {
     setIsLoading(true);
     
     try {
-      // Simulate fetching real data from Rentop URL
-      await new Promise(resolve => setTimeout(resolve, 2500)); 
+      // Extract data from the provided Rentop URL
+      const extractedData = await fetchRentopData(url);
       
-      // For now, we'll use the existing extraction logic
-      // In a real implementation, this would fetch the actual page content
-      const extractedData: CarData = {
-        title: "Rent Lamborghini Huracan Tecnica 2024 in Dubai",
-        price: "AED 3150",
-        location: "Dubai", 
-        images: [
-          "https://hjkyepaqdsyqjvhqedha.supabase.co/storage/v1/object/public/rental_items_images/WhatsApp%20Image%202025-07-08%20at%2012.44.18%20PM%20(2)_0.004156870345214947_1754515689291",
-          "https://hjkyepaqdsyqjvhqedha.supabase.co/storage/v1/object/public/rental_items_images/WhatsApp%20Image%202025-07-08%20at%2012.44.18%20PM%20(5)_0.6361542800591355_1754515697089",
-          "https://hjkyepaqdsyqjvhqedha.supabase.co/storage/v1/object/public/rental_items_images/WhatsApp%20Image%202025-07-08%20at%2012.44.18%20PM_0.4450274492381616_1754515700280",
-          "https://hjkyepaqdsyqjvhqedha.supabase.co/storage/v1/object/public/rental_items_images/WhatsApp%20Image%202025-07-08%20at%2012.44.18%20PM%20(3)_0.017089467222378696_1754515703685",
-          "https://hjkyepaqdsyqjvhqedha.supabase.co/storage/v1/object/public/rental_items_images/WhatsApp%20Image%202025-07-08%20at%2012.44.18%20PM%20(4)_0.46630025046379464_1754515713175"
-        ],
-        specs: {
-          year: "2024",
-          color: "Green",
-          horsepower: "631 HP",
-          engine: "5.2L V10",
-          maxSpeed: "325 km/h",
-          acceleration: "3.2s"
-        }
-      };
-      
+      if (!extractedData) {
+        throw new Error("Impossible d'extraire les données de cette URL");
+      }
+
       toast({
         title: "Données extraites avec succès",
-        description: `${extractedData.images.length} images trouvées`
+        description: "Les informations ont été extraites de l'URL fournie",
+        variant: extractedData.images.length === 0 ? "destructive" : "default"
       });
       
       onDataExtracted(extractedData);
@@ -107,6 +90,17 @@ export function UrlInputStep({ onDataExtracted }: UrlInputStepProps) {
               <li>Copiez l'URL de la page de la voiture</li>
               <li>Collez l'URL ici pour extraire les données automatiquement</li>
             </ol>
+          </div>
+
+          <div className="bg-blue-50/50 border border-blue-200/50 rounded-lg p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <Info className="h-4 w-4 text-blue-600" />
+              <h4 className="font-medium text-sm text-blue-800">Note importante</h4>
+            </div>
+            <p className="text-sm text-blue-700">
+              Les informations seront extraites de l'URL fournie. Si les images ne correspondent pas exactement à votre voiture, 
+              vous pourrez les ajuster à l'étape suivante de configuration.
+            </p>
           </div>
 
           <Button 
