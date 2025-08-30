@@ -19,7 +19,7 @@ import {
   Mic
 } from "lucide-react";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
-import { VideoPreview } from "../../VideoPreview";
+import { VideoPreviewModal } from "../../VideoPreviewModal";
 import { supabase } from "@/integrations/supabase/client";
 
 interface FinalPreviewStepProps {
@@ -126,20 +126,10 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack, onConfigC
             </div>
             
             <div className="relative max-w-xs mx-auto">
-              <VideoPreview
-                images={selectedImages}
-                overlayText={config.overlayText}
-                voiceOverText={config.voiceOverText}
-                model={carData.title}
-                price={carData.price}
+              <VideoPreviewModal
+                carData={carData}
+                config={config}
               />
-              
-              {/* Overlay de contrôle */}
-              <div className="absolute inset-0 bg-black/10 rounded-lg flex items-center justify-center pointer-events-none">
-                <div className="bg-white/90 rounded-lg px-3 py-1 text-xs font-medium text-gray-700">
-                  Aperçu muet
-                </div>
-              </div>
             </div>
           </div>
 

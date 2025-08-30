@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Settings, Mic, Share2 } from "lucide-react";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
 import { VoiceSettings } from "../config/VoiceSettings";
@@ -121,82 +122,119 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
               </div>
 
               {/* Photo Effects */}
-              <div className="space-y-3">
-                <Label>Effet des photos</Label>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-4">
+                <Label>Effets d'animation vidéo</Label>
+                <div className="grid grid-cols-1 gap-3">
+                  {/* Effet 1 - Pan Left Right */}
                   <div 
-                    className={`border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
-                      config.photoEffect === 'pan-left-right' ? 'border-primary bg-primary/5' : ''
+                    className={`border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.photoEffect === 'effect-1' ? 'border-primary bg-primary/5' : ''
                     }`}
-                    onClick={() => updateConfig({ photoEffect: 'pan-left-right' })}
+                    onClick={() => updateConfig({ photoEffect: 'effect-1' })}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Panoramique G→D</span>
-                      <div className={`w-3 h-3 rounded-full border-2 ${
-                        config.photoEffect === 'pan-left-right' ? 'border-primary bg-primary' : 'border-muted'
-                      }`}></div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold">Effet 1</span>
+                        <div className={`w-3 h-3 rounded-full border-2 ${
+                          config.photoEffect === 'effect-1' ? 'border-primary bg-primary' : 'border-muted'
+                        }`}></div>
+                      </div>
+                      <Badge variant="outline" className="text-xs">Panoramique</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">Mouvement de gauche à droite pour mieux voir la voiture</p>
+                    <p className="text-xs text-muted-foreground mb-2">Mouvement de gauche à droite pour révéler progressivement la voiture</p>
+                    <div className="bg-muted/50 rounded p-2">
+                      <div className="w-full h-2 bg-gradient-to-r from-muted via-primary/20 to-muted rounded animate-pulse"></div>
+                    </div>
                   </div>
 
+                  {/* Effet 2 - Zoom In */}
                   <div 
-                    className={`border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
-                      config.photoEffect === 'zoom-in' ? 'border-primary bg-primary/5' : ''
+                    className={`border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.photoEffect === 'effect-2' ? 'border-primary bg-primary/5' : ''
                     }`}
-                    onClick={() => updateConfig({ photoEffect: 'zoom-in' })}
+                    onClick={() => updateConfig({ photoEffect: 'effect-2' })}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Zoom In</span>
-                      <div className={`w-3 h-3 rounded-full border-2 ${
-                        config.photoEffect === 'zoom-in' ? 'border-primary bg-primary' : 'border-muted'
-                      }`}></div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold">Effet 2</span>
+                        <div className={`w-3 h-3 rounded-full border-2 ${
+                          config.photoEffect === 'effect-2' ? 'border-primary bg-primary' : 'border-muted'
+                        }`}></div>
+                      </div>
+                      <Badge variant="outline" className="text-xs">Zoom In</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">Zoom progressif vers l'intérieur</p>
+                    <p className="text-xs text-muted-foreground mb-2">Zoom progressif vers l'intérieur pour créer un effet dramatique</p>
+                    <div className="bg-muted/50 rounded p-2 flex justify-center">
+                      <div className="w-4 h-4 border-2 border-primary rounded animate-ping"></div>
+                    </div>
                   </div>
 
+                  {/* Effet 3 - Zoom Out */}
                   <div 
-                    className={`border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
-                      config.photoEffect === 'zoom-out' ? 'border-primary bg-primary/5' : ''
+                    className={`border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.photoEffect === 'effect-3' ? 'border-primary bg-primary/5' : ''
                     }`}
-                    onClick={() => updateConfig({ photoEffect: 'zoom-out' })}
+                    onClick={() => updateConfig({ photoEffect: 'effect-3' })}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Zoom Out</span>
-                      <div className={`w-3 h-3 rounded-full border-2 ${
-                        config.photoEffect === 'zoom-out' ? 'border-primary bg-primary' : 'border-muted'
-                      }`}></div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold">Effet 3</span>
+                        <div className={`w-3 h-3 rounded-full border-2 ${
+                          config.photoEffect === 'effect-3' ? 'border-primary bg-primary' : 'border-muted'
+                        }`}></div>
+                      </div>
+                      <Badge variant="outline" className="text-xs">Zoom Out</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">Zoom progressif vers l'extérieur</p>
+                    <p className="text-xs text-muted-foreground mb-2">Zoom arrière révélant progressivement l'environnement</p>
+                    <div className="bg-muted/50 rounded p-2 flex justify-center">
+                      <div className="w-6 h-6 border-2 border-primary rounded animate-pulse"></div>
+                    </div>
                   </div>
 
+                  {/* Effet 4 - Fade Transition */}
                   <div 
-                    className={`border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
-                      config.photoEffect === 'fade' ? 'border-primary bg-primary/5' : ''
+                    className={`border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.photoEffect === 'effect-4' ? 'border-primary bg-primary/5' : ''
                     }`}
-                    onClick={() => updateConfig({ photoEffect: 'fade' })}
+                    onClick={() => updateConfig({ photoEffect: 'effect-4' })}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Fade</span>
-                      <div className={`w-3 h-3 rounded-full border-2 ${
-                        config.photoEffect === 'fade' ? 'border-primary bg-primary' : 'border-muted'
-                      }`}></div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold">Effet 4</span>
+                        <div className={`w-3 h-3 rounded-full border-2 ${
+                          config.photoEffect === 'effect-4' ? 'border-primary bg-primary' : 'border-muted'
+                        }`}></div>
+                      </div>
+                      <Badge variant="outline" className="text-xs">Fondu</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">Transition en fondu entre les images</p>
+                    <p className="text-xs text-muted-foreground mb-2">Transitions fluides en fondu entre les images</p>
+                    <div className="bg-muted/50 rounded p-2 flex gap-1">
+                      <div className="w-3 h-3 bg-primary rounded animate-fade-in"></div>
+                      <div className="w-3 h-3 bg-primary/50 rounded animate-fade-in" style={{animationDelay: '0.3s'}}></div>
+                      <div className="w-3 h-3 bg-primary/25 rounded animate-fade-in" style={{animationDelay: '0.6s'}}></div>
+                    </div>
                   </div>
 
+                  {/* Effet 5 - Slide Up */}
                   <div 
-                    className={`border rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
-                      config.photoEffect === 'slide-up' ? 'border-primary bg-primary/5' : ''
+                    className={`border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                      config.photoEffect === 'effect-5' ? 'border-primary bg-primary/5' : ''
                     }`}
-                    onClick={() => updateConfig({ photoEffect: 'slide-up' })}
+                    onClick={() => updateConfig({ photoEffect: 'effect-5' })}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Slide Up</span>
-                      <div className={`w-3 h-3 rounded-full border-2 ${
-                        config.photoEffect === 'slide-up' ? 'border-primary bg-primary' : 'border-muted'
-                      }`}></div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold">Effet 5</span>
+                        <div className={`w-3 h-3 rounded-full border-2 ${
+                          config.photoEffect === 'effect-5' ? 'border-primary bg-primary' : 'border-muted'
+                        }`}></div>
+                      </div>
+                      <Badge variant="outline" className="text-xs">Glissement</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">Glissement vertical des images</p>
+                    <p className="text-xs text-muted-foreground mb-2">Glissement vertical dynamique des images</p>
+                    <div className="bg-muted/50 rounded p-2 overflow-hidden relative h-6">
+                      <div className="w-full h-2 bg-primary rounded animate-slide-in-right"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -259,8 +297,15 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
                     <p className="text-sm capitalize">{config.textStyle}</p>
                   </div>
                   <div className="bg-secondary/10 rounded p-2 border border-secondary/20">
-                    <span className="text-xs text-secondary font-medium">EFFET PHOTO</span>
-                    <p className="text-sm">{config.photoEffect}</p>
+                    <span className="text-xs text-secondary font-medium">EFFET VIDÉO</span>
+                    <p className="text-sm capitalize">
+                      {config.photoEffect === 'effect-1' && "Effet 1 - Panoramique"}
+                      {config.photoEffect === 'effect-2' && "Effet 2 - Zoom In"}
+                      {config.photoEffect === 'effect-3' && "Effet 3 - Zoom Out"}
+                      {config.photoEffect === 'effect-4' && "Effet 4 - Fondu"}
+                      {config.photoEffect === 'effect-5' && "Effet 5 - Glissement"}
+                      {!config.photoEffect && "Aucun effet sélectionné"}
+                    </p>
                   </div>
                   <div className="bg-accent/10 rounded p-2 border border-accent/20">
                     <span className="text-xs text-accent font-medium">TEXTE OVERLAY</span>

@@ -59,41 +59,73 @@ export function VoiceSettings({ config, onConfigChange }: VoiceSettingsProps) {
     setIsPlaying(true);
     
     try {
+      // Get API key from localStorage settings
+      const savedSettings = localStorage.getItem('rentop-api-settings');
+      let apiKey = null;
+      
+      if (savedSettings) {
+        const settings = JSON.parse(savedSettings);
+        apiKey = settings.elevenlabs?.apiKey;
+      }
+
       const response = await supabase.functions.invoke('test-voice', {
         body: {
           voiceId: config.voiceId,
           text: text,
-          voiceSettings: config.voiceSettings
+          voiceSettings: config.voiceSettings,
+          apiKey: apiKey // Pass API key from settings
         }
       });
 
       if (response.error) {
         console.error('Voice test error:', response.error);
-        // Fallback to simulation if API fails
+        throw new Error(response.error.message || 'Erreur lors du test vocal');
+      }
+
+      // Handle audio response
+      if (response.data) {
+        // Create audio element and play
+        const audio = new Audio();
+        const blob = new Blob([response.data], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(blob);
+        
+        audio.src = audioUrl;
+        audio.play().then(() => {
+          console.log('Voice test playing successfully');
+        }).catch(error => {
+          console.error('Error playing audio:', error);
+          throw new Error('Impossible de lire l\'audio généré');
+        });
+
+        // Clean up when audio ends
+        audio.addEventListener('ended', () => {
+          URL.revokeObjectURL(audioUrl);
+          setIsPlaying(false);
+        });
+
+        // Fallback timeout
+        setTimeout(() => {
+          if (isPlaying) {
+            setIsPlaying(false);
+          }
+        }, 10000);
+      } else {
+        // Fallback simulation
         setTimeout(() => {
           setIsPlaying(false);
         }, 3000);
-        return;
       }
-
-      // For now, simulate audio playback since Edge Function response handling can be complex
-      // In a real implementation, you would handle the audio response properly
-      setTimeout(() => {
-        setIsPlaying(false);
-      }, 3000);
-
-      console.log('Voice test completed successfully');
       
     } catch (error) {
       console.error('Error testing voice:', error);
       setIsPlaying(false);
       
-      // Show error to user via toast if available
+      // Show error to user via toast
       if (typeof window !== 'undefined') {
         const event = new CustomEvent('show-toast', {
           detail: {
             title: "Erreur de test vocal",
-            description: "Impossible de tester la voix. La clé API ElevenLabs n'est peut-être pas configurée.",
+            description: error instanceof Error ? error.message : "Vérifiez votre configuration ElevenLabs dans les paramètres.",
             variant: "destructive"
           }
         });

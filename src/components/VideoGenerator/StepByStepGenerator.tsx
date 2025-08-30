@@ -42,7 +42,7 @@ export interface VideoConfig {
   };
   textPosition?: string;
   textStyle: 'clean' | 'gradient' | 'minimalist';
-  photoEffect: 'pan-left-right' | 'zoom-in' | 'zoom-out' | 'fade' | 'slide-up';
+  photoEffect: 'effect-1' | 'effect-2' | 'effect-3' | 'effect-4' | 'effect-5';
 }
 
 const steps = [
@@ -73,7 +73,7 @@ export function StepByStepGenerator() {
     },
     textPosition: 'bottom-6',
     textStyle: 'clean',
-    photoEffect: 'pan-left-right'
+    photoEffect: 'effect-1'
   });
 
   const nextStep = () => {
