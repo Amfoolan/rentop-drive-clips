@@ -151,66 +151,62 @@ function extractCarData(html: string, url: string): CarData | null {
       }
     }
     
-    // Extract price - improved patterns specifically for Rentop
+    // Extract price - Focus specifically on the main "From AED XXX per day" price display
     let price = '';
-    console.log('🔍 Searching for price in HTML...');
+    console.log('🔍 Searching for main price display...');
     
-    // First, look for the main price display patterns - focus on "From AED XXX per day" format
-    const mainPricePatterns = [
-      // Pattern 1: Most specific - "From AED 699 per day" in main price section
-      /From\s+AED\s*(\d{3,4})\s*per\s+day/i,
-      /From\s+AED\s*&nbsp;\s*(\d{3,4})\s*per\s+day/i,
-      
-      // Pattern 2: Main price display with currency first
-      /"price"[^}]*?(\d{3,4})[^}]*?"currency"/i,
-      /class="[^"]*price[^"]*"[^>]*>[^<]*?(\d{3,4})[^<]*?AED/i,
-      
-      // Pattern 3: Look for main booking section price
-      /booking[^>]*>[^<]*?(\d{3,4})[^<]*?AED/i,
-      /From\s+AED\s*(\d{3,4})/i,
-      
-      // Pattern 4: Per day pricing in main sections
-      /(\d{3,4})\s*AED\s*per\s+day/i,
-      /(\d{3,4})\s*AED\/day/i,
-    ];
+    // Look for the exact main price pattern from Rentop pages
+    const mainPriceRegex = /From\s+AED\s+(\d{3,4})\s+per\s+day/i;
+    const mainPriceMatch = html.match(mainPriceRegex);
     
-    let allFoundPrices: { price: number, formattedPrice: string, pattern: number }[] = [];
-    
-    for (let i = 0; i < mainPricePatterns.length; i++) {
-      const pattern = mainPricePatterns[i];
-      const matches = [...html.matchAll(new RegExp(pattern.source, 'gi'))];
+    if (mainPriceMatch && mainPriceMatch[1]) {
+      const priceValue = mainPriceMatch[1];
+      const priceNumber = parseInt(priceValue);
       
-      if (matches.length > 0) {
-        for (const match of matches) {
-          if (match[1]) {
-            const priceNumber = parseInt(match[1].replace(/,/g, ''));
-            // Focus on realistic car rental prices (200-2000 AED per day)
-            if (priceNumber >= 200 && priceNumber <= 2000) {
-              allFoundPrices.push({
-                price: priceNumber,
-                formattedPrice: `${match[1]} AED/jour`,
-                pattern: i + 1
-              });
-              console.log(`✅ Found potential price with pattern ${i + 1}: ${match[1]} AED (${priceNumber})`);
-              console.log(`   Original match: ${match[0]}`);
-            }
-          }
-        }
+      // Validate it's a reasonable car rental price (400-1500 AED per day for premium cars)
+      if (priceNumber >= 400 && priceNumber <= 1500) {
+        price = `${priceValue} AED/jour`;
+        console.log(`✅ Found main display price: ${price}`);
+        console.log(`   Original match: ${mainPriceMatch[0]}`);
       }
     }
     
-    // Select the most reasonable price - prefer prices in 600-800 range (typical for Q8)
-    if (allFoundPrices.length > 0) {
-      // Sort by how close to typical Q8 rental price (around 700)
-      allFoundPrices.sort((a, b) => {
-        const aDistance = Math.abs(a.price - 700);
-        const bDistance = Math.abs(b.price - 700);
-        return aDistance - bDistance;
-      });
+    // If no main price found, try alternative patterns
+    if (!price) {
+      console.log('🔍 Main price not found, trying alternative patterns...');
       
-      const selectedPrice = allFoundPrices[0];
-      price = selectedPrice.formattedPrice;
-      console.log(`✅ Selected most reasonable price: ${price} from pattern ${selectedPrice.pattern}`);
+      const alternativePatterns = [
+        // Look for price in JSON data or structured elements
+        /"price"\s*:\s*(\d{3,4})/i,
+        /"amount"\s*:\s*(\d{3,4})/i,
+        
+        // Look for price in booking section
+        /booking[^>]*>[\s\S]*?(\d{3,4})[^<]*?AED/i,
+        
+        // Look for price with "per day" context
+        /(\d{3,4})\s*AED[^<]*?per\s+day/i,
+        
+        // Look in main content area
+        /main[^>]*>[\s\S]*?(\d{3,4})[^<]*?AED/i,
+      ];
+      
+      for (let i = 0; i < alternativePatterns.length; i++) {
+        const pattern = alternativePatterns[i];
+        const match = html.match(pattern);
+        
+        if (match && match[1]) {
+          const priceValue = match[1];
+          const priceNumber = parseInt(priceValue);
+          
+          // Validate it's a reasonable price
+          if (priceNumber >= 400 && priceNumber <= 1500) {
+            price = `${priceValue} AED/jour`;
+            console.log(`✅ Found price with alternative pattern ${i + 1}: ${price}`);
+            console.log(`   Original match: ${match[0]}`);
+            break;
+          }
+        }
+      }
     }
     
     // If still no price found, try more aggressive patterns
