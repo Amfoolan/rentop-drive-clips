@@ -29,14 +29,36 @@ interface VideoPreviewModalProps {
 
 export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("visual");
 
   const playPreview = () => {
+    if (isPreviewPlaying) return;
+    
     setIsPreviewPlaying(true);
-    // Simulate preview duration
+    setCurrentImageIndex(0);
+    
+    // Cycle through images every 2 seconds
+    const imageInterval = setInterval(() => {
+      setCurrentImageIndex(prev => {
+        const nextIndex = prev + 1;
+        if (nextIndex >= mockImages.length) {
+          clearInterval(imageInterval);
+          setTimeout(() => {
+            setIsPreviewPlaying(false);
+            setCurrentImageIndex(0);
+          }, 500);
+          return prev;
+        }
+        return nextIndex;
+      });
+    }, 2000);
+
+    // Total duration: number of images * 2 seconds
     setTimeout(() => {
       setIsPreviewPlaying(false);
-    }, 8000); // 8 seconds preview
+      setCurrentImageIndex(0);
+    }, mockImages.length * 2000 + 500);
   };
 
   const getEffectName = (effect: string) => {
@@ -92,19 +114,18 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                   {mockImages.map((image, index) => (
                     <div 
                       key={index}
-                      className={`absolute inset-0 transition-all duration-2000 ${
+                      className={`absolute inset-0 transition-all duration-1000 ${
                         isPreviewPlaying ? 
-                          `${index === 0 ? 'opacity-100' : 'opacity-0'} ${
-                            config?.photoEffect === 'effect-1' ? 'animate-slide-in-right' : 
-                            config?.photoEffect === 'effect-2' ? 'animate-scale-in' :
-                            config?.photoEffect === 'effect-3' ? 'animate-scale-out' :
-                            config?.photoEffect === 'effect-4' ? 'animate-fade-in' :
-                            config?.photoEffect === 'effect-5' ? 'animate-slide-in-right' : ''
+                          `${index === currentImageIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'} ${
+                            index === currentImageIndex && config?.photoEffect === 'effect-1' ? 'animate-slide-in-right' : 
+                            index === currentImageIndex && config?.photoEffect === 'effect-2' ? 'animate-scale-in' :
+                            index === currentImageIndex && config?.photoEffect === 'effect-3' ? 'animate-scale-out' :
+                            index === currentImageIndex && config?.photoEffect === 'effect-4' ? 'animate-fade-in' :
+                            index === currentImageIndex && config?.photoEffect === 'effect-5' ? 'animate-slide-in-right' : ''
                           }` 
-                          : 'opacity-25'
+                          : index === 0 ? 'opacity-50' : 'opacity-25'
                       }`}
                       style={{
-                        animationDelay: `${index * 2}s`,
                         backgroundImage: `url(${image})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center'
@@ -112,9 +133,11 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                     >
                       {/* Overlay simulation based on text style */}
                       {config?.overlayText && (
-                        <div className={`absolute ${config.textPosition || 'bottom-6'} left-4 right-4`}>
+                        <div className={`absolute ${config.textPosition || 'bottom-6'} left-4 right-4 ${
+                          index === currentImageIndex ? 'animate-fade-in' : ''
+                        }`}>
                           {config.textStyle === 'clean' && (
-                            <div className="bg-black/80 rounded-lg p-3 text-center animate-fade-in">
+                            <div className="bg-black/80 rounded-lg p-3 text-center">
                               <div className="text-white text-sm font-bold">{config.overlayText}</div>
                               <div className="bg-primary text-white px-2 py-1 rounded-full text-xs mt-2 inline-block">
                                 {carData?.price || "Prix"}
@@ -123,7 +146,7 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                           )}
                           
                           {config.textStyle === 'gradient' && (
-                            <div className="bg-gradient-to-t from-black/90 to-transparent rounded-lg p-3 text-center animate-fade-in">
+                            <div className="bg-gradient-to-t from-black/90 to-transparent rounded-lg p-3 text-center">
                               <div className="text-white text-sm font-bold">{config.overlayText}</div>
                               <div className="bg-gradient-to-r from-pink-500 to-rose-400 text-white px-2 py-1 rounded-full text-xs mt-2 inline-block">
                                 {carData?.price || "Prix"}
@@ -132,7 +155,7 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                           )}
                           
                           {config.textStyle === 'minimalist' && (
-                            <div className="bg-white/10 backdrop-blur rounded-lg p-3 text-center animate-fade-in">
+                            <div className="bg-white/10 backdrop-blur rounded-lg p-3 text-center">
                               <div className="text-white text-sm font-semibold">
                                 {config.overlayText} • {carData?.price || "Prix"}
                               </div>
@@ -143,36 +166,47 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                     </div>
                   ))}
 
-                  {/* Preview Controls Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                    <Button 
-                      onClick={playPreview}
-                      disabled={isPreviewPlaying || !config}
-                      variant="hero"
-                      size="lg"
-                      className="bg-white/20 hover:bg-white/30 backdrop-blur"
-                    >
-                      {isPreviewPlaying ? (
-                        <>
-                          <Pause className="mr-2 h-5 w-5" />
-                          Aperçu en cours...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="mr-2 h-5 w-5" />
-                          Aperçu (8s)
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  {/* Image Progress Indicators */}
+                  <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
+                    {mockImages.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                          index < currentImageIndex 
+                            ? 'bg-white' 
+                            : index === currentImageIndex && isPreviewPlaying
+                              ? 'bg-white animate-grow' 
+                              : 'bg-white/30'
+                        }`}
+                      />
+                    ))}
+                   </div>
 
-                  {/* Progress Bar */}
-                  {isPreviewPlaying && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
-                      <div className="h-full bg-primary w-0 animate-[grow_8s_linear_forwards]"></div>
-                    </div>
-                  )}
-                </div>
+                   {/* Preview Controls Overlay */}
+                   {!isPreviewPlaying && (
+                     <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-30">
+                       <Button 
+                         onClick={playPreview}
+                         disabled={!config}
+                         variant="hero"
+                         size="lg"
+                         className="bg-white/20 hover:bg-white/30 backdrop-blur"
+                       >
+                         <Play className="mr-2 h-5 w-5" />
+                         Aperçu ({mockImages.length * 2}s)
+                       </Button>
+                     </div>
+                   )}
+
+                   {/* Current Image Indicator */}
+                   {isPreviewPlaying && (
+                     <div className="absolute bottom-4 left-4 bg-black/50 rounded px-2 py-1 z-20">
+                       <span className="text-white text-xs">
+                         {currentImageIndex + 1}/{mockImages.length}
+                       </span>
+                     </div>
+                   )}
+                 </div>
 
                 {/* TikTok-like UI Elements */}
                 <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
@@ -203,7 +237,7 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                   Format TikTok 9:16
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  Durée: ~15-20s
+                  Durée: ~{mockImages.length * 2}s
                 </Badge>
               </div>
               

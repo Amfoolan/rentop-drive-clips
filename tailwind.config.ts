@@ -141,7 +141,7 @@ export default {
 						transform: 'translateX(0)' 
 					}
 				},
-				'grow': {
+'grow-progress': {
 					'0%': { 
 						width: '0%' 
 					},
@@ -157,7 +157,8 @@ export default {
 				'scale-in': 'scale-in 0.2s ease-out',
 				'scale-out': 'scale-out 0.2s ease-out',
 				'slide-in-right': 'slide-in-right 0.3s ease-out',
-				'grow': 'grow 8s linear forwards'
+				'grow': 'grow 8s linear forwards',
+				'grow-progress': 'grow-progress 2s linear forwards'
 			}
 		}
 	},
