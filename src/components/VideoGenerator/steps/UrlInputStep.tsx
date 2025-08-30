@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link, Loader2, AlertCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CarData } from "../StepByStepGenerator";
-import { extractRentopDataFromHTML } from "@/utils/rentopFetcher";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UrlInputStepProps {
   onDataExtracted: (data: CarData) => void;
@@ -30,48 +30,29 @@ export function UrlInputStep({ onDataExtracted }: UrlInputStepProps) {
     setIsLoading(true);
     
     try {
-      console.log('Fetching Rentop page content:', url);
+      console.log('Scraping Rentop page:', url);
       
-      // Use Lovable's integrated fetch to get real HTML content
-      let extractedData = null;
-      
-      try {
-        // Use Lovable's fetch website tool through a simulated API call
-        // In practice, this would be handled by Lovable's backend
-        const response = await fetch('/api/lovable-fetch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, formats: 'html' })
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          extractedData = extractRentopDataFromHTML(result.html, url);
-        }
-      } catch (fetchError) {
-        console.log('Fetch failed, using Lovable fetch simulation:', fetchError);
-        
-        // Simulate what Lovable's fetch would return for this URL
-        // This matches the actual Rentop HTML structure
-        const simulatedHtml = `
-          <div class="swiper-slide">
-            <img alt="Rent AUDI Q8 S Line Kit (2021) White in UAE" src="https://www.rentop.co/_next/image?url=https%3A%2F%2Fhjkyepaqdsyqjvhqedha.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Frental_items_images%2Fcfcbab0f-8a5a-4d4d-bf59-3b5565d94b47_0.3299123399966186_1752156894419&amp;w=828&amp;q=75">
-            <img alt="Rent AUDI Q8 S Line Kit (2021) White in UAE" src="https://www.rentop.co/_next/image?url=https%3A%2F%2Fhjkyepaqdsyqjvhqedha.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Frental_items_images%2Fc3c115c6-68eb-446b-9c92-32fe52525944_0.48341439217453663_1752156894418&amp;w=828&amp;q=75">
-            <img alt="Rent AUDI Q8 S Line Kit (2021) White in UAE" src="https://www.rentop.co/_next/image?url=https%3A%2F%2Fhjkyepaqdsyqjvhqedha.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Frental_items_images%2F0_0.9589093497195711_1752156894416&amp;w=828&amp;q=75">
-            <img alt="Rent AUDI Q8 S Line Kit (2021) White in UAE" src="https://www.rentop.co/_next/image?url=https%3A%2F%2Fhjkyepaqdsyqjvhqedha.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Frental_items_images%2F4a41ec57-197b-4f0e-a05a-4de38b2ae902_0.5543600636591945_1752156894417&amp;w=750&amp;q=75">
-          </div>
-          <h1>Rent AUDI Q8 S Line Kit (2021) White in Dubai</h1>
-          <p>From AED 699</p>
-        `;
-        
-        console.log('🔧 Using simulated HTML for testing:', simulatedHtml.length, 'characters');
-        extractedData = extractRentopDataFromHTML(simulatedHtml, url);
+      // Use the Supabase Edge Function to scrape Rentop
+      const { data: result, error } = await supabase.functions.invoke('scrape-rentop', {
+        body: { url }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error('Erreur lors du scraping de la page Rentop');
       }
-      
-      // Only proceed if we have real extracted data with minimum 3 images
+
+      if (!result.success) {
+        throw new Error(result.error || 'Impossible de scraper cette page Rentop');
+      }
+
+      const extractedData = result.data;
+      console.log('✅ Successfully scraped data:', extractedData);
+
+      // Validate minimum requirements
       if (!extractedData || extractedData.images.length < 3) {
         const imageCount = extractedData ? extractedData.images.length : 0;
-        throw new Error(`Impossible d'extraire suffisamment d'images de cette page Rentop (${imageCount} trouvées, minimum 3 requis). Certains listings ont seulement 3-4 photos. Vérifiez que l'URL contient une voiture avec plusieurs photos.`);
+        throw new Error(`Pas assez d'images trouvées (${imageCount}/3 minimum). Cette page Rentop ne contient pas suffisamment d'images pour créer une vidéo.`);
       }
 
       toast({
