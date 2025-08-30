@@ -44,46 +44,13 @@ const extractImagesFromHTML = (html: string, baseUrl: string): string[] => {
   return [...new Set(images)].slice(0, 15);
 };
 
-export const fetchRentopData = async (url: string) => {
-  try {
-    // Fallback to URL parsing for now - real web fetching will be handled in the component
-    const urlParts = url.split('/');
-    const carSlug = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
-    
-    const slugParts = carSlug.split('-');
-    const brand = slugParts[0]?.replace(/\b\w/g, l => l.toUpperCase()) || '';
-    const model = slugParts.slice(1, -2).join(' ').replace(/\b\w/g, l => l.toUpperCase()) || '';
-    const year = carSlug.match(/(\d{4})/)?.[1] || '2024';
-    
-    const title = `${brand} ${model} ${year}`.trim();
-    
-    return {
-      title: title || 'Véhicule de location',
-      price: 'Prix sur demande',
-      location: 'Dubai',
-      images: [],
-      specs: {
-        year,
-        color: 'Non spécifié',
-        horsepower: 'Non spécifié',
-        engine: 'Non spécifié',
-        maxSpeed: 'Non spécifié',
-        acceleration: 'Non spécifié'
-      }
-    };
-  } catch (error) {
-    console.error('Error fetching Rentop data:', error);
-    return null;
-  }
-};
-
-// Function to extract real data from HTML content
+// Function to extract real data from HTML content - NO FALLBACK DATA
 export const extractRentopDataFromHTML = (html: string, url: string) => {
   try {
-    console.log('Extracting data from HTML, length:', html.length);
+    console.log('Extracting real data from HTML, length:', html.length);
     
     // Extract car title from the page - look for the main heading
-    let title = 'Véhicule de location';
+    let title = '';
     const titlePatterns = [
       /<h1[^>]*>([^<]*Rent[^<]*)<\/h1>/i,
       /<h1[^>]*>([^<]+)<\/h1>/i,
@@ -107,8 +74,8 @@ export const extractRentopDataFromHTML = (html: string, url: string) => {
       }
     }
     
-    // Extract price in AED from the page
-    let price = 'Prix sur demande';
+    // Extract price in AED from the page - MUST FIND REAL PRICE
+    let price = '';
     const pricePatterns = [
       /From\s+AED\s*(\d+(?:,\d{3})*)/i,
       /AED\s*(\d+(?:,\d{3})*)/i,
@@ -123,8 +90,14 @@ export const extractRentopDataFromHTML = (html: string, url: string) => {
       }
     }
     
-    // Extract images from the HTML - look for Supabase storage URLs
+    // Extract images from the HTML - MUST FIND REAL IMAGES
     const images = extractImagesFromHTML(html, url);
+    
+    // Only return data if we have minimum required information
+    if (!title || !price || images.length < 5) {
+      console.log('Insufficient data extracted:', { title: !!title, price: !!price, images: images.length });
+      return null;
+    }
     
     // Extract additional specs from URL and HTML
     const yearMatch = url.match(/(\d{4})/) || html.match(/\((\d{4})\)/);
@@ -136,8 +109,8 @@ export const extractRentopDataFromHTML = (html: string, url: string) => {
       colorMatch[1].charAt(0).toUpperCase() + colorMatch[1].slice(1) : 
       'Non spécifié';
     
-    // For Audi R8, we know the general specs
-    let horsepower = 'Non spécifé';
+    // Car-specific specs (only for known models)
+    let horsepower = 'Non spécifié';
     let engine = 'Non spécifié';
     
     if (title.toLowerCase().includes('r8')) {
@@ -145,10 +118,10 @@ export const extractRentopDataFromHTML = (html: string, url: string) => {
       engine = '5.2L V10';
     }
     
-    console.log('Extracted data:', { title, price, images: images.length, year, color, engine, horsepower });
+    console.log('Successfully extracted real data:', { title, price, images: images.length, year, color });
     
     return {
-      title: title || 'Véhicule de location',
+      title,
       price,
       location: 'Dubai',
       images,
