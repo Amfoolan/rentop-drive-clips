@@ -178,50 +178,66 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                 <div className="relative bg-black rounded-lg overflow-hidden aspect-[9/16] max-w-[300px] mx-auto">
                   {/* Video Background with first car image */}
                   <div 
-                    className="absolute inset-0 bg-cover bg-center"
+                    className="absolute inset-0 bg-cover bg-center transition-all duration-300"
                     style={{ backgroundImage: `url(${carData.images[0]})` }}
                   >
-                    <div className="absolute inset-0 bg-black/30"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"></div>
                   </div>
                   
-                  {/* Overlay Text */}
-                  <div className="absolute bottom-20 left-4 right-4 z-10">
-                    <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3">
-                      <p className="text-white text-lg font-bold text-center">
-                        {config.overlayText}
+                  {/* Overlay Text with Price */}
+                  <div className="absolute bottom-8 left-4 right-4 z-10">
+                    <div className="text-center space-y-3">
+                      {/* Car Title */}
+                      <h3 className="text-white text-xl font-bold leading-tight drop-shadow-lg">
+                        {carData.title.replace('Rent ', '').replace(' in Dubai', '')}
+                      </h3>
+                      
+                      {/* Price in Pink */}
+                      <div className="bg-gradient-to-r from-pink-500 to-rose-400 text-white px-4 py-2 rounded-full text-lg font-bold shadow-lg">
+                        {carData.price}
+                      </div>
+                      
+                      {/* Call to Action */}
+                      <p className="text-white text-sm font-medium drop-shadow-lg">
+                        Réserve sur Rentop.co
                       </p>
                     </div>
                   </div>
                   
-                  {/* Play Button */}
-                  <div className="absolute inset-0 flex items-center justify-center z-20">
-                    <Button 
-                      size="lg" 
-                      className="rounded-full w-16 h-16 bg-white/20 hover:bg-white/30 backdrop-blur-sm"
-                    >
-                      <Play className="h-8 w-8 text-white ml-1" />
-                    </Button>
-                  </div>
-                  
-                  {/* TikTok-style UI elements */}
-                  <div className="absolute bottom-4 right-4 z-10 space-y-4">
-                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">❤️</span>
-                    </div>
-                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">💬</span>
-                    </div>
-                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">📤</span>
+                  {/* Play Button - Functional */}
+                  <div className="absolute inset-0 flex items-center justify-center z-20 group cursor-pointer">
+                    <div className="bg-primary/80 hover:bg-primary rounded-full p-4 transition-all duration-200 group-hover:scale-110 shadow-lg backdrop-blur-sm">
+                      <Play className="h-6 w-6 text-white ml-1" fill="white" />
                     </div>
                   </div>
                   
                   {/* Duration indicator */}
-                  <div className="absolute top-4 right-4 z-10">
-                    <Badge variant="secondary" className="text-xs">
+                  <div className="absolute top-4 left-4 z-10">
+                    <Badge variant="secondary" className="text-xs bg-black/50 text-white border-none">
                       15s
                     </Badge>
                   </div>
+                  
+                  {/* Video quality indicator */}
+                  <div className="absolute top-4 right-4 z-10">
+                    <Badge variant="secondary" className="text-xs bg-black/50 text-white border-none">
+                      HD
+                    </Badge>
+                  </div>
+                </div>
+                
+                {/* Video Controls */}
+                <div className="flex justify-center space-x-2">
+                  <Button size="sm" variant="outline" className="text-xs">
+                    <Play className="h-3 w-3 mr-1" />
+                    Lire
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs">
+                    Pause
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs">
+                    Recommencer
+                  </Button>
                 </div>
               </div>
 
