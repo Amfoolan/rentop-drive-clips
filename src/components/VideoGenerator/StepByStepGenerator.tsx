@@ -147,6 +147,14 @@ export function StepByStepGenerator() {
           <PreviewStep 
             carData={carData}
             onConfirm={nextStep}
+            onImageCountChange={(count) => {
+              // Update the number of images selected
+              console.log(`Selected ${count} images for video`);
+            }}
+            onRetryExtraction={() => {
+              // Go back to URL step to retry extraction
+              setCurrentStep(1);
+            }}
           />
         )}
         
