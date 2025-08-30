@@ -170,9 +170,107 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
               </div>
             </div>
 
+            {/* Video Preview */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Mock Video Player */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Aperçu de la vidéo</h4>
+                <div className="relative bg-black rounded-lg overflow-hidden aspect-[9/16] max-w-[300px] mx-auto">
+                  {/* Video Background with first car image */}
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${carData.images[0]})` }}
+                  >
+                    <div className="absolute inset-0 bg-black/30"></div>
+                  </div>
+                  
+                  {/* Overlay Text */}
+                  <div className="absolute bottom-20 left-4 right-4 z-10">
+                    <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3">
+                      <p className="text-white text-lg font-bold text-center">
+                        {config.overlayText}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Play Button */}
+                  <div className="absolute inset-0 flex items-center justify-center z-20">
+                    <Button 
+                      size="lg" 
+                      className="rounded-full w-16 h-16 bg-white/20 hover:bg-white/30 backdrop-blur-sm"
+                    >
+                      <Play className="h-8 w-8 text-white ml-1" />
+                    </Button>
+                  </div>
+                  
+                  {/* TikTok-style UI elements */}
+                  <div className="absolute bottom-4 right-4 z-10 space-y-4">
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">❤️</span>
+                    </div>
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">💬</span>
+                    </div>
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">📤</span>
+                    </div>
+                  </div>
+                  
+                  {/* Duration indicator */}
+                  <div className="absolute top-4 right-4 z-10">
+                    <Badge variant="secondary" className="text-xs">
+                      15s
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Video Configuration Details */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Configuration de la vidéo</h4>
+                
+                {/* Overlay Text */}
+                <div className="bg-muted/20 rounded-lg p-4">
+                  <h5 className="font-medium text-sm mb-2">Texte d'overlay</h5>
+                  <p className="text-sm text-muted-foreground bg-background rounded p-2">
+                    "{config.overlayText}"
+                  </p>
+                </div>
+                
+                {/* Voice-over Text */}
+                <div className="bg-muted/20 rounded-lg p-4">
+                  <h5 className="font-medium text-sm mb-2">Script de la voix-off</h5>
+                  <p className="text-sm text-muted-foreground bg-background rounded p-2 max-h-24 overflow-y-auto">
+                    "{config.voiceOverText}"
+                  </p>
+                </div>
+                
+                {/* Images Used */}
+                <div className="bg-muted/20 rounded-lg p-4">
+                  <h5 className="font-medium text-sm mb-2">Images utilisées ({carData.images.length})</h5>
+                  <div className="grid grid-cols-4 gap-2">
+                    {carData.images.slice(0, 8).map((image, index) => (
+                      <div 
+                        key={index}
+                        className="aspect-square bg-cover bg-center rounded border-2 border-primary/20"
+                        style={{ backgroundImage: `url(${image})` }}
+                      />
+                    ))}
+                    {carData.images.length > 8 && (
+                      <div className="aspect-square bg-muted rounded flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground">
+                          +{carData.images.length - 8}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Video Info */}
             <div className="bg-muted/20 rounded-lg p-4 space-y-3">
-              <h4 className="font-medium">Détails de la vidéo</h4>
+              <h4 className="font-medium">Détails techniques</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Format:</span>
