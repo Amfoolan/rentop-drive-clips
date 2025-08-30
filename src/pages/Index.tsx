@@ -3,6 +3,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { StepByStepGenerator } from "@/components/VideoGenerator/StepByStepGenerator";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UserMenu } from "@/components/Auth/UserMenu";
 import { Wand2, BarChart3 } from "lucide-react";
 import heroImage from "@/assets/hero-image.jpg";
 
@@ -15,6 +16,12 @@ const Index = () => {
         style={{ backgroundImage: `url(${heroImage})` }}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-background/90 to-background/50"></div>
+        
+        {/* User Menu */}
+        <div className="absolute top-4 right-4 z-20">
+          <UserMenu />
+        </div>
+        
         <div className="relative z-10 flex items-center justify-center h-full">
           <div className="text-center">
             <h1 className="text-5xl font-bold gradient-text mb-4">

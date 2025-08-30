@@ -27,6 +27,7 @@ export type Database = {
           title: string
           updated_at: string
           url: string
+          user_id: string
           video_file_path: string | null
           voiceover_text: string | null
         }
@@ -42,6 +43,7 @@ export type Database = {
           title: string
           updated_at?: string
           url: string
+          user_id: string
           video_file_path?: string | null
           voiceover_text?: string | null
         }
@@ -57,6 +59,7 @@ export type Database = {
           title?: string
           updated_at?: string
           url?: string
+          user_id?: string
           video_file_path?: string | null
           voiceover_text?: string | null
         }

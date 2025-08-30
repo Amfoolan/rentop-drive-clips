@@ -6,6 +6,7 @@ export interface GeneratedVideo {
   id: string;
   title: string;
   url: string;
+  user_id: string;
   car_data: any;
   overlay_text?: string | null;
   voiceover_text?: string | null;
@@ -25,6 +26,14 @@ export const useGeneratedVideos = () => {
 
   const fetchVideos = async () => {
     try {
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setVideos([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('generated_videos')
         .select('*')
@@ -33,6 +42,7 @@ export const useGeneratedVideos = () => {
       if (error) throw error;
       setVideos(data || []);
     } catch (error: any) {
+      console.error('Error fetching videos:', error);
       toast({
         variant: "destructive",
         title: "Erreur",
@@ -43,11 +53,23 @@ export const useGeneratedVideos = () => {
     }
   };
 
-  const saveVideo = async (videoData: Omit<GeneratedVideo, 'id' | 'created_at' | 'updated_at'>) => {
+  const saveVideo = async (videoData: Omit<GeneratedVideo, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Utilisateur non authentifié');
+      }
+
+      // Add user_id to the video data
+      const videoWithUser = {
+        ...videoData,
+        user_id: user.id
+      };
+
       const { data, error } = await supabase
         .from('generated_videos')
-        .insert([videoData])
+        .insert([videoWithUser])
         .select()
         .single();
 
@@ -56,10 +78,11 @@ export const useGeneratedVideos = () => {
       await fetchVideos(); // Refresh the list
       return data;
     } catch (error: any) {
+      console.error('Error saving video:', error);
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de sauvegarder la vidéo"
+        description: error.message || "Impossible de sauvegarder la vidéo"
       });
       throw error;
     }
