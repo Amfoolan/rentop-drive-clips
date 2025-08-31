@@ -93,43 +93,50 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
     }
   };
 
-  const handleDownload = () => {
-    // Use the new VideoDownloader for a more realistic video file
-    const demoVideoData = new Uint8Array([
-      // Basic MP4 header for demo
-      0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70,
-      0x69, 0x73, 0x6F, 0x6D, 0x00, 0x00, 0x02, 0x00,
-      0x69, 0x73, 0x6F, 0x6D, 0x69, 0x73, 0x6F, 0x32,
-      0x61, 0x76, 0x63, 0x31, 0x6D, 0x70, 0x34, 0x31
-    ]);
+  const handleDownload = async () => {
+    try {
+      toast({
+        title: "Génération en cours...",
+        description: "Création du fichier vidéo avec les images réelles"
+      });
 
-    const metadata = `
-# Vidéo Rentop - ${carData.title}
-# Configuration: ${JSON.stringify(config, null, 2)}
-# Généré le: ${new Date().toLocaleString()}
-# Format: MP4 - 1080x1920 (9:16)
-# Durée estimée: 15 secondes
-`;
+      // Use VideoDownloader to create real video
+      const { VideoDownloader } = await import('../VideoDownloader');
+      
+      const generatedVideo = {
+        id: videoId || 'temp-id',
+        title: carData.title,
+        url: window.location.href,
+        user_id: 'current-user', // This will be set by the actual video creation
+        car_data: carData,
+        overlay_text: config.overlayText,
+        voiceover_text: config.voiceOverText,
+        status: 'generated' as const,
+        platforms: Object.entries(config.socialNetworks)
+          .filter(([_, enabled]) => enabled)
+          .map(([platform]) => platform),
+        stats: { views: 0, likes: 0, shares: 0 },
+        thumbnail_url: carData.images[0],
+        video_file_path: `videos/generated_${Date.now()}.webm`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-    const metadataBytes = new TextEncoder().encode(metadata);
-    const combinedData = new Uint8Array(demoVideoData.length + metadataBytes.length);
-    combinedData.set(demoVideoData, 0);
-    combinedData.set(metadataBytes, demoVideoData.length);
+      await VideoDownloader.downloadVideo(generatedVideo, config);
 
-    const videoBlob = new Blob([combinedData], { type: 'video/mp4' });
-    const url = window.URL.createObjectURL(videoBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${carData.title.replace(/[^a-zA-Z0-9]/g, '_')}.mp4`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+      toast({
+        title: "Téléchargement terminé !",
+        description: "La vidéo a été générée et téléchargée avec succès"
+      });
 
-    toast({
-      title: "Téléchargement démarré",
-      description: "Votre vidéo MP4 est en cours de téléchargement"
-    });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur de téléchargement",
+        description: "Impossible de générer la vidéo. Veuillez réessayer."
+      });
+    }
   };
 
   return (

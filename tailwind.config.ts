@@ -148,6 +148,25 @@ export default {
 					'100%': { 
 						width: '100%' 
 					}
+				},
+				'grow': {
+					'0%': { 
+						width: '0%' 
+					},
+					'100%': { 
+						width: '100%' 
+					}
+				},
+				'panLeftRight': {
+					'0%': { 
+						backgroundPosition: '0% center' 
+					},
+					'50%': { 
+						backgroundPosition: '20% center' 
+					},
+					'100%': { 
+						backgroundPosition: '0% center' 
+					}
 				}
 			},
 			animation: {
@@ -158,7 +177,8 @@ export default {
 				'scale-out': 'scale-out 0.2s ease-out',
 				'slide-in-right': 'slide-in-right 0.3s ease-out',
 				'grow': 'grow 8s linear forwards',
-				'grow-progress': 'grow-progress 2s linear forwards'
+				'grow-progress': 'grow-progress 2s linear forwards',
+				'pan-left-right': 'panLeftRight 8s ease-in-out infinite'
 			}
 		}
 	},

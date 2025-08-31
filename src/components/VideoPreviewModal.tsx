@@ -51,13 +51,13 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
     }
     
     // Calculate how long each image should be shown
-    const imageDisplayTime = Math.max(1000, totalDuration / mockImages.length); // Minimum 1 second per image
+    const imageDisplayTime = Math.max(1000, totalDuration / previewImages.length); // Minimum 1 second per image
     
     // Create repeated image sequence if needed
     const imagesNeeded = Math.ceil(totalDuration / imageDisplayTime);
     const repeatedImages = [];
     for (let i = 0; i < imagesNeeded; i++) {
-      repeatedImages.push(mockImages[i % mockImages.length]);
+      repeatedImages.push(previewImages[i % previewImages.length]);
     }
     
     let currentImageIdx = 0;
@@ -104,12 +104,9 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
     }
   };
 
-  const mockImages = carData?.images || [
-    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&h=600&fit=crop",
-    "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=400&h=600&fit=crop", 
-    "https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?w=400&h=600&fit=crop",
-    "https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=400&h=600&fit=crop"
-  ];
+  const previewImages = carData?.images && carData.images.length > 0 
+    ? carData.images 
+    : ["/placeholder.svg"];
 
   return (
     <Card className="glass-card border-0 h-fit">
@@ -134,7 +131,7 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                 
                 {/* Preview Images Grid with Effects */}
                 <div className="relative w-full h-full">
-                  {mockImages.map((image, index) => (
+                  {previewImages.map((image, index) => (
                     <div 
                       key={index}
                       className={`absolute inset-0 transition-all duration-1000 ${
@@ -190,8 +187,8 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                   ))}
 
                   {/* Image Progress Indicators */}
-                  <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
-                    {mockImages.map((_, index) => (
+                   <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
+                     {previewImages.map((_, index) => (
                       <div
                         key={index}
                         className={`h-1 flex-1 rounded-full transition-all duration-300 ${
@@ -216,7 +213,7 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                           className="bg-white/20 hover:bg-white/30 backdrop-blur"
                         >
                           <Play className="mr-2 h-5 w-5" />
-                          Aperçu ({config?.audioSource === 'upload' && config.uploadedAudio ? Math.ceil(config.uploadedAudio.duration) : mockImages.length * 2}s)
+                          Aperçu ({config?.audioSource === 'upload' && config.uploadedAudio ? Math.ceil(config.uploadedAudio.duration) : previewImages.length * 2}s)
                         </Button>
                      </div>
                    )}
@@ -224,9 +221,9 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                    {/* Current Image Indicator */}
                    {isPreviewPlaying && (
                      <div className="absolute bottom-4 left-4 bg-black/50 rounded px-2 py-1 z-20">
-                       <span className="text-white text-xs">
-                         {currentImageIndex + 1}/{mockImages.length}
-                       </span>
+                        <span className="text-white text-xs">
+                          {currentImageIndex + 1}/{previewImages.length}
+                        </span>
                      </div>
                    )}
                  </div>
@@ -260,7 +257,7 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                   Format TikTok 9:16
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  Durée: ~{config?.audioSource === 'upload' && config.uploadedAudio ? Math.ceil(config.uploadedAudio.duration) : mockImages.length * 2}s
+                  Durée: ~{config?.audioSource === 'upload' && config.uploadedAudio ? Math.ceil(config.uploadedAudio.duration) : previewImages.length * 2}s
                 </Badge>
               </div>
               

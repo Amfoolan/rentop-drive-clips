@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,25 +8,8 @@ import {
   Pause, 
   Volume2, 
   VolumeX, 
-  Download,
-  Share2,
   Eye,
-  Settings
 } from "lucide-react";
-
-const defaultCarData = {
-  model: "Porsche 911 GT3 RS",
-  images: [
-    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&h=600&fit=crop",
-    "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=400&h=600&fit=crop", 
-    "https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?w=400&h=600&fit=crop",
-    "https://images.unsplash.com/photo-1553440569-bcc63803a83d?w=400&h=600&fit=crop",
-    "https://images.unsplash.com/photo-1544829099-b9a0c5303bea?w=400&h=600&fit=crop"
-  ],
-  overlayText: "Porsche 911 GT3 RS • Réserve sur Rentop.co",
-  voiceOver: "Découvre la Porsche 911 GT3 RS disponible à Paris. Réserve maintenant sur Rentop.co !",
-  price: "280€/jour"
-};
 
 interface VideoPreviewProps {
   images?: string[];
@@ -34,59 +17,123 @@ interface VideoPreviewProps {
   voiceOverText?: string;
   model?: string;
   price?: string;
+  audioUrl?: string;
+  audioDuration?: number;
+  config?: {
+    photoEffect?: string;
+    textStyle?: string;
+    textPosition?: string;
+  };
 }
 
 export function VideoPreview({ 
-  images, 
-  overlayText, 
-  voiceOverText, 
-  model, 
-  price 
-}: VideoPreviewProps = {}) {
+  images = [], 
+  overlayText = "", 
+  voiceOverText = "", 
+  model = "", 
+  price = "",
+  audioUrl,
+  audioDuration,
+  config
+}: VideoPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [audioProgress, setAudioProgress] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const progressRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Use provided props or fallback to defaults
+  // Use real car data with fallbacks
   const carData = {
-    model: model || defaultCarData.model,
-    images: images || defaultCarData.images,
-    overlayText: overlayText || defaultCarData.overlayText,
-    voiceOver: voiceOverText || defaultCarData.voiceOver,
-    price: price || defaultCarData.price
+    model: model || "Voiture de luxe",
+    images: images.length > 0 ? images : ["/placeholder.svg"],
+    overlayText: overlayText || "Réservez maintenant",
+    voiceOver: voiceOverText || "Découvrez cette magnifique voiture",
+    price: price || "Prix sur demande"
   };
+
+  // Calculate timing based on audio duration or fallback
+  const totalDuration = audioDuration ? audioDuration * 1000 : Math.max(carData.images.length * 2000, 10000);
+  const imageDisplayTime = totalDuration / carData.images.length;
+
+  // Initialize audio element
+  useEffect(() => {
+    if (audioUrl) {
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.muted = isMuted;
+      
+      audioRef.current.addEventListener('ended', () => {
+        setIsPlaying(false);
+        setCurrentImageIndex(0);
+        setProgress(0);
+        setAudioProgress(0);
+      });
+
+      return () => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
+      };
+    }
+  }, [audioUrl, isMuted]);
 
   const handlePlayPause = () => {
     if (isPlaying) {
+      // Stop playback
       setIsPlaying(false);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (progressRef.current) clearInterval(progressRef.current);
+      if (audioRef.current) audioRef.current.pause();
     } else {
+      // Start playback
       setIsPlaying(true);
       setProgress(0);
+      setAudioProgress(0);
       setCurrentImageIndex(0);
-      // Simulate video playback with image cycling
+
+      // Start audio if available
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(console.warn);
+      }
+
+      // Image cycling
+      let imageIndex = 0;
       intervalRef.current = setInterval(() => {
-        setCurrentImageIndex(prev => {
-          const next = (prev + 1) % carData.images.length;
-          return next;
-        });
-        setProgress(prev => {
-          const newProgress = prev + (100 / carData.images.length);
-          if (newProgress >= 100) {
-            setIsPlaying(false);
-            setCurrentImageIndex(0);
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-            }
-            return 0;
-          }
-          return newProgress;
-        });
-      }, 1500); // Change image every 1.5 seconds
+        imageIndex = (imageIndex + 1) % carData.images.length;
+        setCurrentImageIndex(imageIndex);
+      }, imageDisplayTime);
+
+      // Progress tracking
+      const startTime = Date.now();
+      progressRef.current = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const newProgress = Math.min((elapsed / totalDuration) * 100, 100);
+        setProgress(newProgress);
+        
+        if (audioRef.current && audioDuration) {
+          setAudioProgress((audioRef.current.currentTime / audioDuration) * 100);
+        }
+
+        if (newProgress >= 100) {
+          setIsPlaying(false);
+          setCurrentImageIndex(0);
+          setProgress(0);
+          setAudioProgress(0);
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          if (progressRef.current) clearInterval(progressRef.current);
+        }
+      }, 100);
+    }
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    if (audioRef.current) {
+      audioRef.current.muted = !isMuted;
     }
   };
 
@@ -106,30 +153,65 @@ export function VideoPreview({
           {/* Video Preview Container - Responsive */}
           <div className="relative">
             <div className="aspect-[9/16] bg-gradient-to-br from-background to-muted rounded-lg overflow-hidden relative border border-border/50">
-              {/* Current Image */}
-              <div className="absolute inset-0">
+              {/* Current Image with Effects */}
+              <div className={`absolute inset-0 transition-all duration-1000 ${
+                config?.photoEffect === 'effect-1' ? 'animate-slide-in-right' :
+                config?.photoEffect === 'effect-2' ? 'animate-scale-in' :
+                config?.photoEffect === 'effect-3' ? 'animate-scale-out' :
+                config?.photoEffect === 'effect-4' ? 'animate-fade-in' : ''
+              }`}>
                 <img 
                   src={carData.images[currentImageIndex]}
                   alt={`${carData.model} - Image ${currentImageIndex + 1}`}
-                  className="w-full h-full object-cover transition-opacity duration-300"
+                  className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.src = '/placeholder.svg';
                   }}
                 />
                 
-                {/* Overlay Text */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                  <h3 className="text-white font-bold text-sm mb-1 leading-tight">
-                    {carData.overlayText.split(' • ')[0]}
-                  </h3>
-                  <p className="text-white/90 text-xs leading-tight">
-                    {carData.overlayText.split(' • ')[1]}
-                  </p>
-                  <div className="mt-1">
-                    <Badge variant="secondary" className="bg-primary/90 text-white text-xs">
-                      {carData.price}
-                    </Badge>
-                  </div>
+                {/* Overlay Text with Configured Style */}
+                <div className={`absolute ${config?.textPosition || 'bottom-6'} left-4 right-4`}>
+                  {config?.textStyle === 'clean' && (
+                    <div className="bg-black/80 rounded-lg p-3 text-center">
+                      <h3 className="text-white text-sm font-bold mb-1">{carData.overlayText}</h3>
+                      <Badge className="bg-primary text-white text-xs">
+                        {carData.price}
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  {config?.textStyle === 'gradient' && (
+                    <div className="bg-gradient-to-t from-black/90 to-transparent rounded-lg p-3 text-center">
+                      <h3 className="text-white text-sm font-bold mb-1">{carData.overlayText}</h3>
+                      <Badge className="bg-gradient-to-r from-pink-500 to-rose-400 text-white text-xs">
+                        {carData.price}
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  {config?.textStyle === 'minimalist' && (
+                    <div className="bg-white/10 backdrop-blur rounded-lg p-3 text-center">
+                      <span className="text-white text-sm font-semibold">
+                        {carData.overlayText} • {carData.price}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {!config?.textStyle && (
+                    <div className="bg-gradient-to-t from-black/80 to-transparent p-3">
+                      <h3 className="text-white font-bold text-sm mb-1 leading-tight">
+                        {carData.overlayText.split(' • ')[0] || carData.model}
+                      </h3>
+                      <p className="text-white/90 text-xs leading-tight">
+                        {carData.overlayText.split(' • ')[1] || "Réservez maintenant"}
+                      </p>
+                      <div className="mt-1">
+                        <Badge variant="secondary" className="bg-primary/90 text-white text-xs">
+                          {carData.price}
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Play/Pause Overlay */}
@@ -166,12 +248,12 @@ export function VideoPreview({
               </div>
 
               {/* Sound Control */}
-              {isPlaying && (
+              {audioUrl && isPlaying && (
                 <div className="absolute top-2 right-2">
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => setIsMuted(!isMuted)}
+                    onClick={toggleMute}
                     className="rounded-full w-6 h-6 bg-black/30 backdrop-blur-sm border border-white/30 hover:bg-black/50 p-0"
                   >
                     {isMuted ? (
@@ -188,9 +270,9 @@ export function VideoPreview({
           {/* Audio Preview - Compact */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-sm">Voix-off</h4>
+              <h4 className="font-medium text-sm">Audio</h4>
               <Badge variant="outline" className="text-xs">
-                {Math.ceil(carData.voiceOver.length / 12)}s
+                {audioDuration ? `${Math.ceil(audioDuration)}s` : `${Math.ceil(totalDuration/1000)}s`}
               </Badge>
             </div>
             <div className="p-2 bg-muted/30 rounded-md border border-border/50">
@@ -199,7 +281,12 @@ export function VideoPreview({
               </p>
             </div>
             {isPlaying && (
-              <Progress value={progress} className="h-1" />
+              <div className="space-y-1">
+                <Progress value={progress} className="h-1" />
+                {audioUrl && audioDuration && (
+                  <Progress value={audioProgress} className="h-0.5 opacity-60" />
+                )}
+              </div>
             )}
           </div>
 
