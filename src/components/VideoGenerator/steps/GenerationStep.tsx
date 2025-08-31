@@ -14,6 +14,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useGeneratedVideos } from "@/hooks/useGeneratedVideos";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
+import { VideoPreview } from "@/components/VideoPreview";
 
 interface GenerationStepProps {
   carData: CarData;
@@ -179,85 +180,21 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
 
             {/* Video Preview */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Mock Video Player */}
+              {/* Interactive Video Preview */}
               <div className="space-y-4">
-                <h4 className="font-medium">Aperçu de la vidéo</h4>
-                <div className="relative bg-black rounded-lg overflow-hidden aspect-[9/16] max-w-[300px] mx-auto group">
-                  {/* Video Background with animated pan effect */}
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center transition-all duration-500 animate-slow-pan"
-                    style={{ 
-                      backgroundImage: `url(${carData.images[0]})`,
-                      backgroundSize: '120%', // Zoom pour permettre l'effet pan
-                      animation: 'panLeftRight 8s ease-in-out infinite'
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40"></div>
-                  </div>
-                  
-                  {/* Aperçu muet indicator */}
-                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
-                    <div className="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
-                      <span className="text-white text-xs font-medium">Aperçu avec effet pan</span>
-                    </div>
-                  </div>
-                  
-                  {/* Car Title and Info - Position variable */}
-                  <div className={`absolute ${config.textPosition || 'bottom-6'} left-4 right-4 z-10 space-y-3`}>
-                    <div className="text-center space-y-2">
-                      {/* Car Name */}
-                      <h3 className="text-white text-lg font-bold leading-tight drop-shadow-lg">
-                        {carData.title.replace('Rent ', '').replace(' in Dubai', '')}
-                      </h3>
-                      
-                      {/* Subtitle */}
-                      <p className="text-white text-sm opacity-90 drop-shadow-lg">
-                        Réserve sur Rentop.co
-                      </p>
-                      
-                      {/* Price Badge */}
-                      <div className="inline-block bg-primary px-4 py-1.5 rounded-full">
-                        <span className="text-white text-sm font-bold">
-                          {carData.price}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Interactive Play Button */}
-                  <div className="absolute inset-0 flex items-center justify-center z-20">
-                    <div className="bg-white/20 hover:bg-white/30 rounded-full p-6 transition-all duration-200 hover:scale-110 shadow-lg backdrop-blur-sm cursor-pointer group-hover:bg-white/40">
-                      <Play className="h-8 w-8 text-white ml-1" fill="white" />
-                    </div>
-                  </div>
-                  
-                  {/* Duration */}
-                  <div className="absolute top-4 right-4 z-10">
-                    <div className="bg-black/50 rounded px-2 py-1">
-                      <span className="text-white text-xs">15s</span>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Playback Status */}
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">
-                    🎬 Effet pan gauche-droite • 🔇 Aperçu sans son
-                  </p>
-                </div>
-
-                {/* Add custom keyframes for the pan effect */}
-                <div className="hidden">
-                  <style dangerouslySetInnerHTML={{
-                    __html: `
-                      @keyframes panLeftRight {
-                        0% { background-position: 0% center; }
-                        50% { background-position: 20% center; }
-                        100% { background-position: 0% center; }
-                      }
-                    `
-                  }} />
-                </div>
+                <h4 className="font-medium">Aperçu interactif de la vidéo</h4>
+                <VideoPreview
+                  images={carData.images}
+                  overlayText={config.overlayText}
+                  voiceOverText={config.voiceOverText}
+                  model={carData.title.replace('Rent ', '').replace(' in UAE in Dubai', '')}
+                  price={carData.price}
+                  config={{
+                    photoEffect: config.photoEffect,
+                    textStyle: config.textStyle,
+                    textPosition: config.textPosition
+                  }}
+                />
               </div>
 
               {/* Video Configuration Details */}
