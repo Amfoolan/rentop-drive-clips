@@ -88,11 +88,11 @@ export const useGeneratedVideos = () => {
     }
   };
 
-  const downloadVideo = async (video: GeneratedVideo) => {
+  const downloadVideo = async (video: GeneratedVideo, config?: any) => {
     try {
       // Import VideoDownloader dynamically to avoid circular deps
       const { VideoDownloader } = await import('@/components/VideoGenerator/VideoDownloader');
-      await VideoDownloader.downloadVideo(video);
+      await VideoDownloader.downloadVideo(video, config);
       
       toast({
         title: "Téléchargement réussi",
