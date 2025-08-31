@@ -16,6 +16,7 @@ import { useGeneratedVideos } from "@/hooks/useGeneratedVideos";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPreview } from "@/components/VideoPreview";
+import { FFmpegVideoGenerator } from "../FFmpegVideoGenerator";
 
 
 interface GenerationStepProps {
@@ -153,87 +154,35 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const handleDownload = async () => {
     setIsDownloading(true);
     setDownloadProgress(0);
-    setDownloadStatus('Génération professionnelle MP4...');
+    setDownloadStatus('Initialisation de FFmpeg...');
     
     try {
       toast({
         title: "Génération vidéo MP4",
-        description: "Création professionnelle avec FFmpeg serveur"
+        description: "Création professionnelle avec FFmpeg navigateur"
       });
 
-      setDownloadProgress(10);
-      setDownloadStatus('Préparation des données...');
-
-      // Get ElevenLabs API key if needed
-      let apiKey = null;
-      if (config.audioSource === 'elevenlabs') {
-        const savedSettings = localStorage.getItem('rentop-api-settings');
-        if (savedSettings) {
-          const settings = JSON.parse(savedSettings);
-          apiKey = settings.elevenlabs?.apiKey;
-        }
-      }
-
-      setDownloadProgress(25);
-      setDownloadStatus('Envoi vers serveur...');
-
-      // Call Edge Function for professional video generation
-      const response = await supabase.functions.invoke('generate-video', {
-        body: {
-          carData: {
-            title: carData.title,
-            images: carData.images,
-            price: carData.price,
-            location: carData.location
+      // Use FFmpeg.wasm for professional video generation
+      await FFmpegVideoGenerator.downloadVideo(
+        carData,
+        config,
+        audioUrl || undefined,
+        {
+          onProgress: (progress) => {
+            setDownloadProgress(progress);
           },
-          config: {
-            overlayText: config.overlayText,
-            voiceOverText: config.voiceOverText,
-            audioSource: config.audioSource,
-            voiceId: config.voiceId || 'EXAVITQu4vr4xnSDxMaL',
-            voiceSettings: config.voiceSettings,
-            audioUrl: audioUrl, // Pass existing audio URL
-            audioDuration: audioDuration,
-            uploadedAudio: config.uploadedAudio,
-            socialNetworks: config.socialNetworks,
-            textPosition: config.textPosition,
-            textStyle: config.textStyle,
-            photoEffect: config.photoEffect
+          onStatus: (status) => {
+            setDownloadStatus(status);
           },
-          apiKey: apiKey
+          onToast: (title, description, variant) => {
+            toast({
+              title,
+              description,
+              variant: variant || 'default'
+            });
+          }
         }
-      });
-
-      if (response.error) {
-        throw new Error(`Erreur serveur: ${response.error.message}`);
-      }
-
-      setDownloadProgress(75);
-      setDownloadStatus('Traitement du MP4...');
-
-      // Convert response to blob (MP4 video)
-      const videoBlob = new Blob([response.data], { type: 'video/mp4' });
-      
-      setDownloadProgress(90);
-      setDownloadStatus('Téléchargement...');
-
-      // Download the generated MP4
-      const url = URL.createObjectURL(videoBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${carData.title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.mp4`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      setDownloadProgress(100);
-      setDownloadStatus('MP4 téléchargé avec succès !');
-      
-      toast({
-        title: "Vidéo MP4 générée !",
-        description: "Qualité professionnelle - Prête pour Instagram/TikTok"
-      });
+      );
       
     } catch (error) {
       console.error('Download error:', error);
@@ -481,7 +430,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                  ) : (
                    <>
                  <Download className="h-4 w-4" />
-                 Télécharger Ressources
+                 Télécharger MP4
                    </>
                  )}
               </Button>
@@ -500,10 +449,10 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                 <div className="flex items-start gap-2">
                   <Download className="h-4 w-4 text-blue-600 mt-0.5" />
                   <div className="text-sm">
-                    <p className="font-medium text-blue-800">Format de téléchargement</p>
-                    <p className="text-blue-700 mt-1">
-                      MP4 1080x1920 (9:16) - Compatible TikTok, Instagram Reels, YouTube Shorts
-                    </p>
+                     <p className="font-medium text-blue-800">Génération FFmpeg navigateur</p>
+                     <p className="text-blue-700 mt-1">
+                       MP4 H.264 1080x1920 (9:16) - Qualité professionnelle pour réseaux sociaux
+                     </p>
                     <p className="text-blue-600 text-xs mt-1">
                       • Audio : {config.audioSource === 'elevenlabs' ? 'ElevenLabs IA ✓' : config.audioSource === 'upload' ? 'Audio personnalisé ✓' : 'Aucun ✗'}
                       • Effets visuels ✓ 
