@@ -45,70 +45,46 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
     setGeneratedVideoBlob(null);
 
     try {
-      // Step 1: Generate audio if needed
       setProgress(20);
       toast({
-        title: "Génération de l'audio",
-        description: "Préparation de la voix-off..."
+        title: "Génération de la vidéo",
+        description: "Création de la vidéo MP4 avec audio intégré..."
       });
 
-      let audioDataForVideo = null;
-      
-      if (config.audioSource === 'elevenlabs' && config.voiceOverText) {
+      // Get API key for ElevenLabs if needed
+      let apiKey = null;
+      if (config.audioSource === 'elevenlabs') {
         const savedSettings = localStorage.getItem('rentop-api-settings');
-        let apiKey = null;
-        
         if (savedSettings) {
           const settings = JSON.parse(savedSettings);
           apiKey = settings.elevenlabs?.apiKey;
         }
-
-        const audioResponse = await supabase.functions.invoke('test-voice', {
-          body: {
-            voiceId: config.voiceId,
-            text: config.voiceOverText,
-            voiceSettings: config.voiceSettings,
-            apiKey: apiKey
-          }
-        });
-
-        if (audioResponse.error) {
-          console.warn('Audio generation failed:', audioResponse.error);
-          toast({
-            variant: "destructive",
-            title: "Avertissement audio",
-            description: "La génération audio a échoué, la vidéo sera créée sans son"
-          });
-        } else if (audioResponse.data) {
-          const blob = new Blob([audioResponse.data], { type: 'audio/mpeg' });
-          const audioUrl = URL.createObjectURL(blob);
-          setAudioUrl(audioUrl);
-          
-          const estimatedDuration = Math.max(config.voiceOverText.length / 12, 5);
-          setAudioDuration(estimatedDuration);
-          
-          // Convert blob to base64 for the edge function
-          const arrayBuffer = await blob.arrayBuffer();
-          const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-          audioDataForVideo = base64Audio;
-        }
-      } else if (config.audioSource === 'upload' && config.uploadedAudio) {
-        setAudioUrl(config.uploadedAudio.url);
-        setAudioDuration(config.uploadedAudio.duration);
         
-        // Convert uploaded audio to base64
-        const response = await fetch(config.uploadedAudio.url);
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-        audioDataForVideo = base64Audio;
+        if (!apiKey) {
+          throw new Error('Clé API ElevenLabs requise pour la génération audio');
+        }
       }
 
-      // Step 2: Generate video with real edge function
-      setProgress(40);
-      toast({
-        title: "Génération de la vidéo",
-        description: "Création de la vidéo MP4 avec FFmpeg..."
+      console.log('Sending request to generate-video edge function:', {
+        carData: {
+          images: carData.images,
+          title: carData.title,
+          price: carData.price,
+          location: carData.location
+        },
+        config: {
+          overlayText: config.overlayText,
+          voiceOverText: config.voiceOverText,
+          audioSource: config.audioSource,
+          voiceId: config.voiceId,
+          voiceSettings: config.voiceSettings,
+          uploadedAudio: config.uploadedAudio,
+          socialNetworks: config.socialNetworks,
+          photoEffect: config.photoEffect,
+          textStyle: config.textStyle,
+          textPosition: config.textPosition
+        },
+        apiKey: apiKey
       });
 
       const videoResponse = await supabase.functions.invoke('generate-video', {
@@ -121,19 +97,24 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
           },
           config: {
             overlayText: config.overlayText,
+            voiceOverText: config.voiceOverText,
+            audioSource: config.audioSource,
+            voiceId: config.voiceId,
             voiceSettings: config.voiceSettings,
+            uploadedAudio: config.uploadedAudio,
             socialNetworks: config.socialNetworks,
             photoEffect: config.photoEffect,
             textStyle: config.textStyle,
-            textPosition: config.textPosition,
-            audioData: audioDataForVideo // Send audio data if available
-          }
+            textPosition: config.textPosition
+          },
+          apiKey: apiKey
         }
       });
 
       setProgress(80);
 
       if (videoResponse.error) {
+        console.error('Video generation error:', videoResponse.error);
         throw new Error(`Erreur génération vidéo: ${videoResponse.error.message || 'Erreur inconnue'}`);
       }
 
@@ -141,9 +122,34 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
         throw new Error('Aucune donnée vidéo reçue');
       }
 
-      // Convert base64 video data to blob
-      const videoBlob = new Blob([videoResponse.data], { type: 'video/mp4' });
+      // The edge function returns the video as ArrayBuffer/Uint8Array
+      let videoBlob: Blob;
+      if (videoResponse.data instanceof ArrayBuffer) {
+        videoBlob = new Blob([videoResponse.data], { type: 'video/mp4' });
+      } else if (videoResponse.data instanceof Uint8Array) {
+        videoBlob = new Blob([videoResponse.data], { type: 'video/mp4' });
+      } else {
+        // Fallback: assume it's base64 encoded
+        const binaryString = atob(videoResponse.data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        videoBlob = new Blob([bytes], { type: 'video/mp4' });
+      }
+
       setGeneratedVideoBlob(videoBlob);
+      
+      // Set audio info for UI display
+      if (config.audioSource === 'elevenlabs' && config.voiceOverText) {
+        const estimatedDuration = Math.max(config.voiceOverText.length / 12, 5);
+        setAudioDuration(estimatedDuration);
+        // Create fake audio URL for preview (not actually used for playback)
+        setAudioUrl('audio-generated');
+      } else if (config.audioSource === 'upload' && config.uploadedAudio) {
+        setAudioUrl(config.uploadedAudio.url);
+        setAudioDuration(config.uploadedAudio.duration);
+      }
 
       setProgress(100);
 
