@@ -36,11 +36,11 @@ interface TextStyle {
 }
 
 const PRESET_POSITIONS = [
-  { name: "Haut centre", x: 540, y: 200 },
+  { name: "Haut centre", x: 540, y: 300 },
   { name: "Centre", x: 540, y: 960 },
-  { name: "Bas centre", x: 540, y: 1720 },
-  { name: "Haut gauche", x: 100, y: 200 },
-  { name: "Haut droite", x: 980, y: 200 }
+  { name: "Bas centre", x: 540, y: 1620 },
+  { name: "Haut gauche", x: 150, y: 300 },
+  { name: "Haut droite", x: 930, y: 300 }
 ];
 
 const FONT_FAMILIES = [
@@ -245,7 +245,7 @@ export function TextEditor({ backgroundImage, initialText, onTextUpdate, onCompl
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
       {/* Canvas */}
       <div className="space-y-4">
         <div className="text-center">
@@ -255,12 +255,14 @@ export function TextEditor({ backgroundImage, initialText, onTextUpdate, onCompl
           </p>
         </div>
         
-        <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-background">
-          <canvas 
-            ref={canvasRef} 
-            className="max-w-full h-auto"
-            style={{ maxHeight: '600px' }}
-          />
+        <div className="border-2 border-dashed border-border rounded-lg overflow-hidden bg-background flex justify-center">
+          <div className="relative" style={{ width: '270px', height: '480px' }}>
+            <canvas 
+              ref={canvasRef} 
+              className="w-full h-full object-contain"
+              style={{ display: 'block' }}
+            />
+          </div>
         </div>
         
         <div className="flex gap-2 justify-center">
@@ -437,13 +439,14 @@ export function TextEditor({ backgroundImage, initialText, onTextUpdate, onCompl
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {PRESET_POSITIONS.map((pos) => (
                 <Button
                   key={pos.name}
                   variant="outline"
                   size="sm"
                   onClick={() => setPresetPosition(pos)}
+                  className="justify-start"
                 >
                   {pos.name}
                 </Button>
