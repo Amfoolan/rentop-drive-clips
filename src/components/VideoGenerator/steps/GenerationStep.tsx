@@ -160,44 +160,110 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
     try {
       toast({
         title: "Génération en cours...",
-        description: "Création du fichier vidéo avec les images réelles"
+        description: "Création du fichier MP4 avec audio synchronisé"
       });
 
-      // Use VideoDownloader to create real video
-      const { VideoDownloader } = await import('../VideoDownloader');
-      
-      const generatedVideo = {
-        id: videoId || 'temp-id',
-        title: carData.title,
-        url: window.location.href,
-        user_id: 'current-user', // This will be set by the actual video creation
-        car_data: carData,
-        overlay_text: config.overlayText,
-        voiceover_text: config.voiceOverText,
-        status: 'generated' as const,
-        platforms: Object.entries(config.socialNetworks)
-          .filter(([_, enabled]) => enabled)
-          .map(([platform]) => platform),
-        stats: { views: 0, likes: 0, shares: 0 },
-        thumbnail_url: carData.images[0],
-        video_file_path: `videos/generated_${Date.now()}.webm`,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      // Prepare request data for video generation
+      const videoGenerationData: {
+        carData: {
+          title: string;
+          images: string[];
+          price: string;
+          location: string;
+        };
+        config: {
+          overlayText: string;
+          voiceOverText: string;
+          audioSource: 'elevenlabs' | 'upload';
+          voiceId: string;
+          voiceSettings: {
+            stability: number;
+            similarity_boost: number;
+            speed: number;
+          };
+          uploadedAudio?: {
+            file: File;
+            duration: number;
+            url: string;
+          };
+          socialNetworks: Record<string, boolean>;
+          textPosition: string;
+          textStyle: 'clean' | 'gradient' | 'minimalist';
+          photoEffect: 'effect-1' | 'effect-2' | 'effect-3' | 'effect-4' | 'effect-5';
+        };
+        apiKey?: string;
+      } = {
+        carData: {
+          title: carData.title,
+          images: carData.images,
+          price: carData.price,
+          location: carData.location
+        },
+        config: {
+          overlayText: config.overlayText,
+          voiceOverText: config.voiceOverText,
+          audioSource: config.audioSource,
+          voiceId: config.voiceId,
+          voiceSettings: config.voiceSettings,
+          uploadedAudio: config.uploadedAudio,
+          socialNetworks: config.socialNetworks,
+          textPosition: config.textPosition,
+          textStyle: config.textStyle,
+          photoEffect: config.photoEffect
+        }
       };
 
-      await VideoDownloader.downloadVideo(generatedVideo, config);
+      // Add API key for ElevenLabs if needed
+      if (config.audioSource === 'elevenlabs') {
+        const savedSettings = localStorage.getItem('rentop-api-settings');
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+          videoGenerationData.apiKey = settings.elevenlabs?.apiKey;
+        }
+      }
 
-      toast({
-        title: "Téléchargement terminé !",
-        description: "La vidéo a été générée et téléchargée avec succès"
+      console.log('Calling video generation function...');
+
+      // Call the video generation edge function
+      const response = await supabase.functions.invoke('generate-video', {
+        body: videoGenerationData
       });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to generate video');
+      }
+
+      // The response.data should be the video file blob
+      if (response.data) {
+        // Create download link
+        const blob = new Blob([response.data], { type: 'video/mp4' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create temporary download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tiktok_${carData.title.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Clean up
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: "Téléchargement terminé !",
+          description: "Votre vidéo MP4 TikTok/Instagram a été générée et téléchargée"
+        });
+      } else {
+        throw new Error('No video data received from server');
+      }
 
     } catch (error) {
       console.error('Download error:', error);
       toast({
         variant: "destructive",
-        title: "Erreur de téléchargement",
-        description: "Impossible de générer la vidéo. Veuillez réessayer."
+        title: "Erreur de génération",
+        description: `Impossible de générer la vidéo MP4: ${error.message}`
       });
     }
   };
@@ -406,9 +472,9 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
 
             {/* Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Button onClick={handleDownload} className="flex items-center gap-2">
+              <Button onClick={handleDownload} className="flex items-center gap-2" size="lg">
                 <Download className="h-4 w-4" />
-                Télécharger
+                Télécharger MP4
               </Button>
               <Button variant="outline" className="flex items-center gap-2">
                 <Share2 className="h-4 w-4" />
@@ -418,6 +484,24 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                 <RotateCcw className="h-4 w-4" />
                 Nouvelle vidéo
               </Button>
+            </div>
+
+            {/* Download Info */}
+            <div className="bg-blue-50/50 border border-blue-200/50 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <Download className="h-4 w-4 text-blue-600 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-blue-800">Format de téléchargement</p>
+                  <p className="text-blue-700 mt-1">
+                    MP4 1080x1920 (9:16) - Compatible TikTok, Instagram Reels, YouTube Shorts
+                  </p>
+                  <p className="text-blue-600 text-xs mt-1">
+                    • Audio synchronisé {audioUrl || config.audioSource === 'upload' ? '✓' : '✗'} 
+                    • Effets visuels ✓ 
+                    • Texte overlay ✓
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
