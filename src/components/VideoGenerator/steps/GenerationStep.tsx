@@ -16,7 +16,7 @@ import { useGeneratedVideos } from "@/hooks/useGeneratedVideos";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPreview } from "@/components/VideoPreview";
-import JSZip from 'jszip';
+
 
 interface GenerationStepProps {
   carData: CarData;
@@ -153,87 +153,83 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const handleDownload = async () => {
     setIsDownloading(true);
     setDownloadProgress(0);
-    setDownloadStatus('Préparation...');
+    setDownloadStatus('Génération de la vidéo MP4...');
     
     try {
       toast({
-        title: "Téléchargement des ressources",
-        description: "Téléchargement des images et de l'audio"
+        title: "Génération vidéo MP4",
+        description: "Création de votre vidéo prête pour Instagram/TikTok"
       });
 
-      setDownloadProgress(25);
-      setDownloadStatus('Préparation du téléchargement...');
-
-      // Create a zip file with images and audio
-      const zip = new JSZip();
+      // Import VideoDownloader
+      const { VideoDownloader } = await import('../VideoDownloader');
       
-      // Add images to zip
-      setDownloadProgress(50);
-      setDownloadStatus('Ajout des images...');
-      
-      for (let i = 0; i < carData.images.length; i++) {
-        try {
-          const response = await fetch(carData.images[i]);
-          const blob = await response.blob();
-          zip.file(`image_${i + 1}.jpg`, blob);
-        } catch (e) {
-          console.warn(`Failed to download image ${i + 1}:`, e);
-        }
-      }
-
-      // Add audio if available
-      if (audioUrl) {
-        setDownloadProgress(75);
-        setDownloadStatus('Ajout de l\'audio...');
-        try {
-          const response = await fetch(audioUrl);
-          const audioBlob = await response.blob();
-          zip.file('audio.mp3', audioBlob);
-        } catch (e) {
-          console.warn('Failed to download audio:', e);
-        }
-      }
-
-      // Add config file
-      zip.file('video_config.json', JSON.stringify({
+      // Create video data object for VideoDownloader
+      const videoData = {
+        id: videoId || '',
         title: carData.title,
-        overlayText: config.overlayText,
-        voiceOverText: config.voiceOverText,
-        audioSource: config.audioSource,
-        socialNetworks: config.socialNetworks,
-        instructions: "Pour recréer la vidéo: utilisez les images dans l'ordre, ajoutez le texte d'overlay, et synchronisez avec l'audio."
-      }, null, 2));
+        url: window.location.href,
+        user_id: '', // Will be set by the system
+        car_data: carData,
+        overlay_text: config.overlayText,
+        voiceover_text: config.voiceOverText,
+        status: 'generated' as const,
+        platforms: Object.entries(config.socialNetworks)
+          .filter(([_, enabled]) => enabled)
+          .map(([platform]) => platform),
+        stats: { views: 0, likes: 0, shares: 0 },
+        thumbnail_url: carData.images[0],
+        video_file_path: `videos/generated_${Date.now()}.mp4`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-      setDownloadProgress(90);
-      setDownloadStatus('Création de l\'archive...');
+      // Prepare config with audio URL
+      const downloadConfig = {
+        ...config,
+        audioUrl: audioUrl,
+        audioDuration: audioDuration
+      };
 
-      // Generate and download zip
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(zipBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${carData.title.replace(/\s+/g, '_')}_resources_${Date.now()}.zip`;
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      setDownloadProgress(25);
+      setDownloadStatus('Traitement des images...');
+
+      // Add progress callback to VideoDownloader
+      const originalDownload = VideoDownloader.downloadVideo;
+      VideoDownloader.downloadVideo = async (video, cfg) => {
+        setDownloadProgress(50);
+        setDownloadStatus('Génération des frames vidéo...');
+        
+        setTimeout(() => {
+          setDownloadProgress(75);
+          setDownloadStatus('Encodage MP4...');
+        }, 2000);
+        
+        setTimeout(() => {
+          setDownloadProgress(90);
+          setDownloadStatus('Finalisation...');
+        }, 4000);
+        
+        return originalDownload.call(VideoDownloader, video, cfg);
+      };
+
+      // Generate and download MP4 video
+      await VideoDownloader.downloadVideo(videoData, downloadConfig);
       
       setDownloadProgress(100);
-      setDownloadStatus('Téléchargement terminé');
-      
-      URL.revokeObjectURL(url);
+      setDownloadStatus('Vidéo MP4 téléchargée !');
       
       toast({
-        title: "Ressources téléchargées",
-        description: "Images, audio et configuration sauvegardés dans un fichier ZIP"
+        title: "Vidéo MP4 générée !",
+        description: "Votre vidéo est prête pour Instagram et TikTok"
       });
       
     } catch (error) {
       console.error('Download error:', error);
       toast({
         variant: "destructive",
-        title: "Erreur de téléchargement",
-        description: "Impossible de créer le fichier de téléchargement"
+        title: "Erreur de génération",
+        description: "Impossible de générer la vidéo MP4"
       });
     } finally {
       setIsDownloading(false);

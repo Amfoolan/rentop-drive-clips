@@ -1,8 +1,13 @@
 import { GeneratedVideo } from "@/hooks/useGeneratedVideos";
 import { VideoConfig } from "./StepByStepGenerator";
 
+interface ExtendedVideoConfig extends VideoConfig {
+  audioUrl?: string;
+  audioDuration?: number;
+}
+
 export class VideoDownloader {
-  static async downloadVideo(video: GeneratedVideo, config?: VideoConfig): Promise<void> {
+  static async downloadVideo(video: GeneratedVideo, config?: ExtendedVideoConfig): Promise<void> {
     try {
       console.log('Starting video download for:', video.title);
       
@@ -13,7 +18,7 @@ export class VideoDownloader {
       
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${VideoDownloader.sanitizeFilename(video.title)}.webm`;
+      link.download = `${VideoDownloader.sanitizeFilename(video.title)}.mp4`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -26,7 +31,7 @@ export class VideoDownloader {
     }
   }
 
-  private static async createVideoFile(video: GeneratedVideo, config?: VideoConfig): Promise<Blob> {
+  private static async createVideoFile(video: GeneratedVideo, config?: ExtendedVideoConfig): Promise<Blob> {
     console.log('Creating video file...');
     
     // Create a canvas to generate video frames
@@ -47,7 +52,9 @@ export class VideoDownloader {
 
     // Determine video duration (from audio or default)
     let videoDurationSeconds = 15; // Default
-    if (config?.uploadedAudio?.duration) {
+    if (config?.audioDuration) {
+      videoDurationSeconds = config.audioDuration;
+    } else if (config?.uploadedAudio?.duration) {
       videoDurationSeconds = config.uploadedAudio.duration;
     }
     
@@ -55,10 +62,32 @@ export class VideoDownloader {
     const totalFrames = videoDurationSeconds * fps;
     const imageDuration = totalFrames / Math.max(loadedImages.length, 1);
 
-    // Create video stream from canvas
+    // Create video stream from canvas with audio
     const stream = canvas.captureStream(fps);
+    
+    // Add audio track if available
+    if (config?.audioUrl) {
+      try {
+        const audio = new Audio(config.audioUrl);
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaElementSource(audio);
+        const destination = audioCtx.createMediaStreamDestination();
+        source.connect(destination);
+        
+        // Add audio track to stream
+        destination.stream.getAudioTracks().forEach(track => {
+          stream.addTrack(track);
+        });
+        
+        audio.play();
+      } catch (error) {
+        console.warn('Failed to add audio to video:', error);
+      }
+    }
+    
+    // Use H.264 codec for better compatibility with Instagram/TikTok
     const mediaRecorder = new MediaRecorder(stream, {
-      mimeType: 'video/webm;codecs=vp9'
+      mimeType: 'video/webm;codecs=vp8,opus'
     });
 
     const chunks: Blob[] = [];
@@ -72,7 +101,7 @@ export class VideoDownloader {
 
       mediaRecorder.onstop = () => {
         console.log('Video recording stopped');
-        const videoBlob = new Blob(chunks, { type: 'video/webm' });
+        const videoBlob = new Blob(chunks, { type: 'video/mp4' });
         resolve(videoBlob);
       };
 
