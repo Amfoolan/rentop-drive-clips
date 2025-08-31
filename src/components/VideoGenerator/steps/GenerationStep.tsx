@@ -163,111 +163,26 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
         description: "Création du fichier MP4 avec audio synchronisé"
       });
 
-      // Prepare request data for video generation
-      const videoGenerationData: {
-        carData: {
-          title: string;
-          images: string[];
-          price: string;
-          location: string;
-        };
-        config: {
-          overlayText: string;
-          voiceOverText: string;
-          audioSource: 'elevenlabs' | 'upload';
-          voiceId: string;
-          voiceSettings: {
-            stability: number;
-            similarity_boost: number;
-            speed: number;
-          };
-          uploadedAudio?: {
-            file: File;
-            duration: number;
-            url: string;
-          };
-          socialNetworks: Record<string, boolean>;
-          textPosition: string;
-          textStyle: 'clean' | 'gradient' | 'minimalist';
-          photoEffect: 'effect-1' | 'effect-2' | 'effect-3' | 'effect-4' | 'effect-5';
-        };
-        apiKey?: string;
-      } = {
-        carData: {
-          title: carData.title,
-          images: carData.images,
-          price: carData.price,
-          location: carData.location
+      // Use client-side video generation with FFmpeg.wasm
+      const { generateVideoWithFFmpeg } = await import('@/utils/videoGenerator');
+      
+      await generateVideoWithFFmpeg(carData, config, audioUrl, {
+        onProgress: (progress) => {
+          // Could update a progress state here if needed
+          console.log(`Video generation progress: ${progress}%`);
         },
-        config: {
-          overlayText: config.overlayText,
-          voiceOverText: config.voiceOverText,
-          audioSource: config.audioSource,
-          voiceId: config.voiceId,
-          voiceSettings: config.voiceSettings,
-          uploadedAudio: config.uploadedAudio,
-          socialNetworks: config.socialNetworks,
-          textPosition: config.textPosition,
-          textStyle: config.textStyle,
-          photoEffect: config.photoEffect
+        onStatus: (status) => {
+          console.log(`Video generation status: ${status}`);
+        },
+        onToast: (title, description, variant = 'default') => {
+          toast({
+            title,
+            description,
+            variant: variant as any
+          });
         }
-      };
-
-      // Add API key for ElevenLabs if needed
-      if (config.audioSource === 'elevenlabs') {
-        const savedSettings = localStorage.getItem('rentop-api-settings');
-        if (savedSettings) {
-          const settings = JSON.parse(savedSettings);
-          videoGenerationData.apiKey = settings.elevenlabs?.apiKey;
-        }
-        
-        if (!videoGenerationData.apiKey) {
-          throw new Error('Clé API ElevenLabs requise pour la génération de voix IA');
-        }
-      } else if (config.audioSource === 'upload') {
-        // For uploaded audio, we'll create a video with silent audio for now
-        toast({
-          title: "Mode audio limité",
-          description: "Les fichiers uploadés créeront une vidéo avec audio silencieux. Utilisez ElevenLabs pour le meilleur résultat."
-        });
-      }
-
-      console.log('Calling video generation function...');
-
-      // Call the video generation edge function
-      const response = await supabase.functions.invoke('generate-video', {
-        body: videoGenerationData
       });
-
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to generate video');
-      }
-
-      // The response.data should be the video file blob
-      if (response.data) {
-        // Create download link
-        const blob = new Blob([response.data], { type: 'video/mp4' });
-        const url = URL.createObjectURL(blob);
-        
-        // Create temporary download link
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `tiktok_${carData.title.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.mp4`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Clean up
-        URL.revokeObjectURL(url);
-
-        toast({
-          title: "Téléchargement terminé !",
-          description: "Votre vidéo MP4 TikTok/Instagram a été générée et téléchargée"
-        });
-      } else {
-        throw new Error('No video data received from server');
-      }
-
+      
     } catch (error) {
       console.error('Download error:', error);
       toast({
@@ -506,15 +421,10 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                       MP4 1080x1920 (9:16) - Compatible TikTok, Instagram Reels, YouTube Shorts
                     </p>
                     <p className="text-blue-600 text-xs mt-1">
-                      • Audio : {config.audioSource === 'elevenlabs' ? 'ElevenLabs IA ✓' : config.audioSource === 'upload' ? 'Audio silencieux (temporaire) ⚠️' : 'Aucun ✗'}
+                      • Audio : {config.audioSource === 'elevenlabs' ? 'ElevenLabs IA ✓' : config.audioSource === 'upload' ? 'Audio personnalisé ✓' : 'Aucun ✗'}
                       • Effets visuels ✓ 
                       • Texte overlay ✓
                     </p>
-                    {config.audioSource === 'upload' && (
-                      <p className="text-orange-600 text-xs mt-1">
-                        ⚠️ Les fichiers MP3 uploadés ne sont pas encore supportés. Utilisez ElevenLabs pour un audio de qualité.
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
