@@ -16,7 +16,7 @@ import { useGeneratedVideos } from "@/hooks/useGeneratedVideos";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPreview } from "@/components/VideoPreview";
-import { FFmpegVideoGenerator } from "../FFmpegVideoGenerator";
+import { generateVideoWithFFmpeg } from "@/utils/videoGenerator";
 
 
 interface GenerationStepProps {
@@ -162,8 +162,8 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
         description: "Création professionnelle avec FFmpeg navigateur"
       });
 
-      // Use FFmpeg.wasm for professional video generation
-      await FFmpegVideoGenerator.downloadVideo(
+      // Use FFmpeg.wasm for professional MP4 video generation
+      const videoBlob = await generateVideoWithFFmpeg(
         carData,
         config,
         audioUrl || undefined,
@@ -183,6 +183,16 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
           }
         }
       );
+
+      // Download the MP4 file
+      const url = URL.createObjectURL(videoBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${carData.title.replace(/[^a-zA-Z0-9]/g, '_')}_TikTok.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
     } catch (error) {
       console.error('Download error:', error);

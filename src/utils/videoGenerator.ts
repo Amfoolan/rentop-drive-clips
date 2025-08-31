@@ -41,9 +41,7 @@ export async function generateVideoWithFFmpeg(
     console.log('Loading FFmpeg with multiple CDN fallbacks...');
     
     const cdnUrls = [
-      'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm',
-      'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm',
-      'https://cdn.skypack.dev/@ffmpeg/core@0.12.6/dist/esm'
+      '/ffmpeg'  // Use local files first
     ];
 
     let ffmpegLoaded = false;
