@@ -156,10 +156,20 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
     }
   };
 
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadStatus, setDownloadStatus] = useState<string>('');
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const handleDownload = async () => {
+    if (isDownloading) return;
+    
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    setDownloadStatus('Préparation...');
+    
     try {
       toast({
-        title: "Génération en cours...",
+        title: "Génération MP4 démarrée",
         description: "Création du fichier MP4 avec audio synchronisé"
       });
 
@@ -168,10 +178,11 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
       
       await generateVideoWithFFmpeg(carData, config, audioUrl, {
         onProgress: (progress) => {
-          // Could update a progress state here if needed
+          setDownloadProgress(progress);
           console.log(`Video generation progress: ${progress}%`);
         },
         onStatus: (status) => {
+          setDownloadStatus(status);
           console.log(`Video generation status: ${status}`);
         },
         onToast: (title, description, variant = 'default') => {
@@ -187,9 +198,13 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
       console.error('Download error:', error);
       toast({
         variant: "destructive",
-        title: "Erreur de génération",
-        description: `Impossible de générer la vidéo MP4: ${error.message}`
+        title: "Erreur de génération MP4",
+        description: `Problème: ${error.message || 'Erreur inconnue'}`
       });
+    } finally {
+      setIsDownloading(false);
+      setDownloadStatus('');
+      setDownloadProgress(0);
     }
   };
 
@@ -395,11 +410,39 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
               </div>
             </div>
 
+            {/* Download Progress */}
+            {isDownloading && (
+              <div className="bg-blue-50/50 border border-blue-200/50 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  <span className="font-medium text-blue-800">Génération MP4 en cours...</span>
+                </div>
+                <Progress value={downloadProgress} className="h-2" />
+                <p className="text-sm text-blue-700">
+                  {downloadStatus} - {Math.round(downloadProgress)}%
+                </p>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Button onClick={handleDownload} className="flex items-center gap-2" size="lg">
-                <Download className="h-4 w-4" />
-                Télécharger MP4
+              <Button 
+                onClick={handleDownload} 
+                disabled={isDownloading}
+                className="flex items-center gap-2" 
+                size="lg"
+              >
+                {isDownloading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Génération...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Télécharger MP4
+                  </>
+                )}
               </Button>
               <Button variant="outline" className="flex items-center gap-2">
                 <Share2 className="h-4 w-4" />

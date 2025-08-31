@@ -18,19 +18,35 @@ export async function generateVideoWithFFmpeg(
 
   onProgress?.(0);
   onStatus?.('Initialisation de FFmpeg...');
+  
+  console.log('Starting FFmpeg video generation:', { carData: carData.title, audioUrl: !!audioUrl });
 
   try {
     // Initialize FFmpeg
     const ffmpeg = new FFmpeg();
     
+    // Add logging
+    ffmpeg.on('log', ({ message }) => {
+      console.log('FFmpeg log:', message);
+    });
+    
+    ffmpeg.on('progress', ({ progress }) => {
+      if (progress > 0) {
+        onProgress?.(70 + (progress * 0.2)); // Map FFmpeg progress to our 70-90% range
+      }
+    });
+    
     // Load FFmpeg with progress
     onStatus?.('Chargement de FFmpeg WebAssembly...');
+    console.log('Loading FFmpeg...');
     
     const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
       wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
     });
+    
+    console.log('FFmpeg loaded successfully');
     
     onProgress?.(10);
     onStatus?.('Préparation des images...');
@@ -118,8 +134,10 @@ export async function generateVideoWithFFmpeg(
     // Execute FFmpeg command
     onStatus?.('Génération du fichier MP4...');
     onProgress?.(80);
-
+    
+    console.log('Executing FFmpeg command:', command.join(' '));
     await ffmpeg.exec(command);
+    console.log('FFmpeg execution completed');
 
     onStatus?.('Finalisation...');
     onProgress?.(90);
