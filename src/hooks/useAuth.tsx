@@ -7,11 +7,34 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Timeout de sécurité pour éviter un chargement infini
+    const timeoutId = setTimeout(() => {
+      console.log('useAuth: Timeout reached, forcing loading to false');
+      setLoading(false);
+    }, 10000); // 10 secondes maximum
+
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setLoading(false);
+      try {
+        console.log('useAuth: Getting initial session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('useAuth: Error getting session:', error);
+          clearTimeout(timeoutId);
+          setLoading(false);
+          return;
+        }
+        
+        console.log('useAuth: Session retrieved:', session ? 'User found' : 'No user');
+        setUser(session?.user ?? null);
+        clearTimeout(timeoutId);
+        setLoading(false);
+      } catch (error) {
+        console.error('useAuth: Unexpected error getting session:', error);
+        clearTimeout(timeoutId);
+        setLoading(false);
+      }
     };
 
     getInitialSession();
@@ -19,12 +42,17 @@ export const useAuth = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('useAuth: Auth state changed:', event, session ? 'User present' : 'No user');
         setUser(session?.user ?? null);
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
