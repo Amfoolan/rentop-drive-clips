@@ -14,6 +14,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useGeneratedVideos } from "@/hooks/useGeneratedVideos";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
+import { supabase } from "@/integrations/supabase/client";
 import { VideoPreview } from "@/components/VideoPreview";
 
 interface GenerationStepProps {
@@ -28,6 +29,8 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<'generating' | 'completed' | 'error'>('generating');
   const [videoId, setVideoId] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioDuration, setAudioDuration] = useState<number | null>(null);
 
   useEffect(() => {
     generateVideo();
@@ -36,15 +39,18 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const generateVideo = async () => {
     setStatus('generating');
     setProgress(0);
+    setAudioUrl(null);
+    setAudioDuration(null);
 
     try {
       // Simulate video generation process
       const stages = [
         { name: "Préparation des images", duration: 1000 },
-        { name: "Génération de la voix-off", duration: 2000 },
+        { name: "Génération de l'audio", duration: 2000 },
+        { name: "Synchronisation audio-vidéo", duration: 1500 },
         { name: "Assemblage de la vidéo", duration: 2500 },
         { name: "Ajout des effets", duration: 1500 },
-        { name: "Finalisation", duration: 1000 }
+        { name: "Finalisation avec audio", duration: 1000 }
       ];
 
       let currentProgress = 0;
@@ -53,6 +59,60 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
           title: stage.name,
           description: `Étape ${index + 1}/${stages.length}`
         });
+
+        // Generate audio during the "Génération de l'audio" stage
+        if (stage.name === "Génération de l'audio") {
+          try {
+            if (config.audioSource === 'elevenlabs' && config.voiceOverText) {
+              // Generate audio with ElevenLabs
+              const savedSettings = localStorage.getItem('rentop-api-settings');
+              let apiKey = null;
+              
+              if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                apiKey = settings.elevenlabs?.apiKey;
+              }
+
+              const response = await supabase.functions.invoke('test-voice', {
+                body: {
+                  voiceId: config.voiceId,
+                  text: config.voiceOverText,
+                  voiceSettings: config.voiceSettings,
+                  apiKey: apiKey
+                }
+              });
+
+              if (response.error) {
+                console.warn('Audio generation failed:', response.error);
+                toast({
+                  variant: "destructive",
+                  title: "Avertissement audio",
+                  description: "La génération audio a échoué, la vidéo sera créée sans son"
+                });
+              } else if (response.data) {
+                // Create audio URL from response
+                const blob = new Blob([response.data], { type: 'audio/mpeg' });
+                const audioUrl = URL.createObjectURL(blob);
+                setAudioUrl(audioUrl);
+                
+                // Calculate duration (estimation based on text length)
+                const estimatedDuration = Math.max(config.voiceOverText.length / 12, 5); // ~12 chars per second, min 5s
+                setAudioDuration(estimatedDuration);
+              }
+            } else if (config.audioSource === 'upload' && config.uploadedAudio) {
+              // Use uploaded audio
+              setAudioUrl(config.uploadedAudio.url);
+              setAudioDuration(config.uploadedAudio.duration);
+            }
+          } catch (error) {
+            console.warn('Audio generation error:', error);
+            toast({
+              variant: "destructive",
+              title: "Avertissement audio",
+              description: "Problème lors de la génération audio, la vidéo sera créée sans son"
+            });
+          }
+        }
 
         await new Promise(resolve => setTimeout(resolve, stage.duration));
         currentProgress = ((index + 1) / stages.length) * 100;
@@ -80,7 +140,9 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
 
       toast({
         title: "Vidéo générée avec succès !",
-        description: "Votre vidéo TikTok est prête et sauvegardée"
+        description: audioUrl 
+          ? "Votre vidéo TikTok avec audio est prête et sauvegardée"
+          : "Votre vidéo TikTok est prête et sauvegardée"
       });
 
     } catch (error) {
@@ -189,6 +251,8 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                   voiceOverText={config.voiceOverText}
                   model={carData.title.replace('Rent ', '').replace(' in UAE in Dubai', '')}
                   price={carData.price}
+                  audioUrl={audioUrl}
+                  audioDuration={audioDuration}
                   config={{
                     photoEffect: config.photoEffect,
                     textStyle: config.textStyle,
@@ -209,13 +273,61 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                   </p>
                 </div>
                 
-                {/* Voice-over Text */}
-                <div className="bg-muted/20 rounded-lg p-4">
-                  <h5 className="font-medium text-sm mb-2">Script de la voix-off</h5>
-                  <p className="text-sm text-muted-foreground bg-background rounded p-2 max-h-24 overflow-y-auto">
-                    "{config.voiceOverText}"
-                  </p>
-                </div>
+                {/* Audio Configuration */}
+                {(audioUrl || config.audioSource === 'upload') && (
+                  <div className="bg-muted/20 rounded-lg p-4">
+                    <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
+                      🔊 Configuration audio
+                    </h5>
+                    <div className="space-y-2 text-sm">
+                      {config.audioSource === 'elevenlabs' ? (
+                        <>
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Source:</span> ElevenLabs (IA)
+                          </p>
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Voix:</span> {config.voiceId === 'EXAVITQu4vr4xnSDxMaL' ? 'Sarah' : 'Voix sélectionnée'}
+                          </p>
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Durée estimée:</span> {audioDuration ? `${Math.ceil(audioDuration)}s` : 'Calculée automatiquement'}
+                          </p>
+                          {audioUrl && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                              <span className="text-xs text-green-600 font-medium">Audio généré avec succès</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Source:</span> Fichier uploadé
+                          </p>
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Fichier:</span> {config.uploadedAudio?.file.name || 'Fichier MP3'}
+                          </p>
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Durée:</span> {audioDuration ? `${Math.ceil(audioDuration)}s` : 'Non définie'}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span className="text-xs text-blue-600 font-medium">Fichier audio prêt</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Voice-over Text (only for ElevenLabs) */}
+                {config.audioSource === 'elevenlabs' && (
+                  <div className="bg-muted/20 rounded-lg p-4">
+                    <h5 className="font-medium text-sm mb-2">Script de la voix-off</h5>
+                    <p className="text-sm text-muted-foreground bg-background rounded p-2 max-h-24 overflow-y-auto">
+                      "{config.voiceOverText}"
+                    </p>
+                  </div>
+                )}
                 
                 {/* Images Used */}
                 <div className="bg-muted/20 rounded-lg p-4">
@@ -250,17 +362,32 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                 </div>
                 <div>
                   <span className="text-muted-foreground">Durée:</span>
-                  <span className="ml-2 font-medium">15 secondes</span>
+                  <span className="ml-2 font-medium">{audioDuration ? `${Math.ceil(audioDuration)}s` : '15s'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Voix:</span>
-                  <span className="ml-2 font-medium">Eleven Labs - Sarah</span>
+                  <span className="text-muted-foreground">Audio:</span>
+                  <span className="ml-2 font-medium">
+                    {audioUrl || config.audioSource === 'upload' 
+                      ? (config.audioSource === 'elevenlabs' ? 'ElevenLabs IA' : 'MP3 personnalisé')
+                      : 'Aucun'
+                    }
+                  </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Images:</span>
                   <span className="ml-2 font-medium">{carData.images.length} photos</span>
                 </div>
               </div>
+              
+              {/* Audio Status Indicator */}
+              {(audioUrl || config.audioSource === 'upload') && (
+                <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-600 font-medium">
+                    Vidéo avec audio synchronisé
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Platforms */}
