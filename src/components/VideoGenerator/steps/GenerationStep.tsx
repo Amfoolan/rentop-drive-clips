@@ -16,6 +16,7 @@ import { useGeneratedVideos } from "@/hooks/useGeneratedVideos";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPreview } from "@/components/VideoPreview";
+import JSZip from 'jszip';
 
 interface GenerationStepProps {
   carData: CarData;
@@ -31,7 +32,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const [videoId, setVideoId] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
-  const [generatedVideoBlob, setGeneratedVideoBlob] = useState<Blob | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     generateVideo();
@@ -42,17 +43,15 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
     setProgress(0);
     setAudioUrl(null);
     setAudioDuration(null);
-    setGeneratedVideoBlob(null);
 
     try {
       // Import here to avoid bundle bloat
-      const { generateVideoWithFFmpeg } = await import('@/utils/videoGenerator');
       const { generateAudioWithElevenLabs } = await import('@/utils/audioGenerator');
 
-      setProgress(10);
+      setProgress(20);
       toast({
         title: "Génération de la vidéo",
-        description: "Initialisation de FFmpeg et création de la vidéo MP4..."
+        description: "Préparation de l'aperçu vidéo avec audio..."
       });
 
       let finalAudioUrl: string | undefined;
@@ -72,7 +71,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
           throw new Error('Clé API ElevenLabs requise pour la génération audio');
         }
 
-        setProgress(15);
+        setProgress(30);
         
         try {
           const audioResult = await generateAudioWithElevenLabs(
@@ -81,7 +80,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
             config.voiceSettings || {},
             apiKey,
             {
-              onProgress: (progress) => setProgress(15 + (progress * 0.15)), // 15-30%
+              onProgress: (progress) => setProgress(30 + (progress * 0.6)), // 30-90%
               onStatus: (status) => console.log('Audio status:', status)
             }
           );
@@ -95,7 +94,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
           console.warn('Audio generation failed, proceeding without audio:', audioError);
           toast({
             title: "Audio non généré",
-            description: "Génération de la vidéo sans audio",
+            description: "Aperçu vidéo sans audio",
             variant: "default"
           });
         }
@@ -105,23 +104,9 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
         finalAudioDuration = config.uploadedAudio.duration;
         setAudioUrl(finalAudioUrl);
         setAudioDuration(finalAudioDuration);
+        setProgress(70);
       }
 
-      setProgress(30);
-
-      // Generate video with FFmpeg
-      const videoBlob = await generateVideoWithFFmpeg(
-        carData,
-        config,
-        finalAudioUrl,
-        {
-          onProgress: (progress) => setProgress(30 + (progress * 0.65)), // 30-95%
-          onStatus: (status) => console.log('Video status:', status),
-          onToast: (title, description, variant) => toast({ title, description, variant })
-        }
-      );
-
-      setGeneratedVideoBlob(videoBlob);
       setProgress(100);
 
       // Save to database
@@ -144,10 +129,10 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
       setStatus('completed');
 
       toast({
-        title: "Vidéo générée avec succès !",
-        description: audioUrl 
-          ? "Votre vidéo TikTok avec audio est prête et sauvegardée"
-          : "Votre vidéo TikTok est prête et sauvegardée"
+        title: "Aperçu vidéo généré avec succès !",
+        description: finalAudioUrl 
+          ? "Votre aperçu vidéo TikTok avec audio est prêt"
+          : "Votre aperçu vidéo TikTok est prêt"
       });
 
     } catch (error) {
@@ -166,26 +151,68 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
-    if (isDownloading || !generatedVideoBlob) return;
-    
     setIsDownloading(true);
     setDownloadProgress(0);
-    setDownloadStatus('Préparation du téléchargement...');
+    setDownloadStatus('Préparation...');
     
     try {
       toast({
-        title: "Téléchargement démarré",
-        description: "Téléchargement de votre vidéo MP4"
+        title: "Téléchargement des ressources",
+        description: "Téléchargement des images et de l'audio"
       });
 
-      // Create download link for the generated video
-      const url = URL.createObjectURL(generatedVideoBlob);
+      setDownloadProgress(25);
+      setDownloadStatus('Préparation du téléchargement...');
+
+      // Create a zip file with images and audio
+      const zip = new JSZip();
+      
+      // Add images to zip
+      setDownloadProgress(50);
+      setDownloadStatus('Ajout des images...');
+      
+      for (let i = 0; i < carData.images.length; i++) {
+        try {
+          const response = await fetch(carData.images[i]);
+          const blob = await response.blob();
+          zip.file(`image_${i + 1}.jpg`, blob);
+        } catch (e) {
+          console.warn(`Failed to download image ${i + 1}:`, e);
+        }
+      }
+
+      // Add audio if available
+      if (audioUrl) {
+        setDownloadProgress(75);
+        setDownloadStatus('Ajout de l\'audio...');
+        try {
+          const response = await fetch(audioUrl);
+          const audioBlob = await response.blob();
+          zip.file('audio.mp3', audioBlob);
+        } catch (e) {
+          console.warn('Failed to download audio:', e);
+        }
+      }
+
+      // Add config file
+      zip.file('video_config.json', JSON.stringify({
+        title: carData.title,
+        overlayText: config.overlayText,
+        voiceOverText: config.voiceOverText,
+        audioSource: config.audioSource,
+        socialNetworks: config.socialNetworks,
+        instructions: "Pour recréer la vidéo: utilisez les images dans l'ordre, ajoutez le texte d'overlay, et synchronisez avec l'audio."
+      }, null, 2));
+
+      setDownloadProgress(90);
+      setDownloadStatus('Création de l\'archive...');
+
+      // Generate and download zip
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${carData.title.replace(/\s+/g, '_')}_${Date.now()}.mp4`;
-      
-      setDownloadProgress(50);
-      setDownloadStatus('Téléchargement en cours...');
+      link.download = `${carData.title.replace(/\s+/g, '_')}_resources_${Date.now()}.zip`;
       
       document.body.appendChild(link);
       link.click();
@@ -194,12 +221,11 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
       setDownloadProgress(100);
       setDownloadStatus('Téléchargement terminé');
       
-      // Clean up the URL
       URL.revokeObjectURL(url);
       
       toast({
-        title: "Téléchargement réussi",
-        description: "Votre vidéo MP4 a été téléchargée avec succès"
+        title: "Ressources téléchargées",
+        description: "Images, audio et configuration sauvegardés dans un fichier ZIP"
       });
       
     } catch (error) {
@@ -207,7 +233,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
       toast({
         variant: "destructive",
         title: "Erreur de téléchargement",
-        description: `Problème: ${error.message || 'Erreur inconnue'}`
+        description: "Impossible de créer le fichier de téléchargement"
       });
     } finally {
       setIsDownloading(false);
@@ -423,7 +449,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
               <div className="bg-blue-50/50 border border-blue-200/50 rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                  <span className="font-medium text-blue-800">Génération MP4 en cours...</span>
+                  <span className="font-medium text-blue-800">Téléchargement des ressources...</span>
                 </div>
                 <Progress value={downloadProgress} className="h-2" />
                 <p className="text-sm text-blue-700">
@@ -436,7 +462,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                <Button 
                  onClick={handleDownload} 
-                 disabled={isDownloading || !generatedVideoBlob}
+                 disabled={isDownloading}
                  className="flex items-center gap-2" 
                  size="lg"
                >
@@ -447,8 +473,8 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                    </>
                  ) : (
                    <>
-                     <Download className="h-4 w-4" />
-                     Télécharger MP4
+                 <Download className="h-4 w-4" />
+                 Télécharger Ressources
                    </>
                  )}
               </Button>
