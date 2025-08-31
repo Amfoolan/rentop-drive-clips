@@ -22,6 +22,8 @@ interface VideoGenerationRequest {
       similarity_boost: number;
       speed: number;
     };
+    audioUrl?: string;
+    audioDuration?: number;
     uploadedAudio?: {
       url: string;
       duration: number;
@@ -160,10 +162,15 @@ function createFFmpegCommand(
     '-map', '[output]',
     '-map', `${imageCount}:a`, // Audio input
     '-c:v', 'libx264',
+    '-profile:v', 'high', // High profile for better quality
+    '-preset', 'medium', // Balance between quality and speed
+    '-crf', '18', // High quality (lower CRF = better quality)
     '-c:a', 'aac',
-    '-b:a', '128k',
-    '-ar', '44100',
+    '-b:a', '192k', // Higher bitrate for better audio
+    '-ar', '48000', // Higher sample rate
     '-r', '30', // 30 FPS
+    '-pix_fmt', 'yuv420p', // Compatibility with all players
+    '-movflags', '+faststart', // Web optimization
     '-t', videoDuration.toString(),
     '-shortest',
     '-f', 'mp4'
@@ -208,24 +215,61 @@ serve(async (req) => {
     let audioDuration: number;
 
     if (config.audioSource === 'elevenlabs') {
-      if (!config.voiceOverText) {
-        throw new Error('No voice-over text provided');
-      }
+      // Check if we already have generated audio URL from client
+      if (config.audioUrl && config.audioDuration) {
+        console.log('Using pre-generated ElevenLabs audio from client');
+        
+        // Download the audio from the provided URL
+        try {
+          const audioResponse = await fetch(config.audioUrl);
+          if (!audioResponse.ok) {
+            throw new Error('Failed to download audio from URL');
+          }
+          audioBuffer = new Uint8Array(await audioResponse.arrayBuffer());
+          audioDuration = config.audioDuration;
+        } catch (error) {
+          console.warn('Failed to use pre-generated audio, generating new:', error);
+          // Fall back to generating new audio
+          if (!config.voiceOverText) {
+            throw new Error('No voice-over text provided and no valid audio URL');
+          }
 
-      const elevenlabsApiKey = apiKey || Deno.env.get('ELEVENLABS_API_KEY');
-      if (!elevenlabsApiKey) {
-        throw new Error('ElevenLabs API key is required');
-      }
+          const elevenlabsApiKey = apiKey || Deno.env.get('ELEVENLABS_API_KEY');
+          if (!elevenlabsApiKey) {
+            throw new Error('ElevenLabs API key is required');
+          }
 
-      audioBuffer = await generateAudioWithElevenLabs(
-        config.voiceOverText,
-        config.voiceId || 'EXAVITQu4vr4xnSDxMaL',
-        config.voiceSettings,
-        elevenlabsApiKey
-      );
-      
-      // Estimate duration based on text length (roughly 12 characters per second)
-      audioDuration = Math.max(config.voiceOverText.length / 12, 5);
+          audioBuffer = await generateAudioWithElevenLabs(
+            config.voiceOverText,
+            config.voiceId || 'EXAVITQu4vr4xnSDxMaL',
+            config.voiceSettings,
+            elevenlabsApiKey
+          );
+          
+          // Estimate duration based on text length
+          audioDuration = Math.max(config.voiceOverText.length / 12, 5);
+        }
+      } else {
+        // Generate new audio with ElevenLabs
+        if (!config.voiceOverText) {
+          throw new Error('No voice-over text provided');
+        }
+
+        const elevenlabsApiKey = apiKey || Deno.env.get('ELEVENLABS_API_KEY');
+        if (!elevenlabsApiKey) {
+          throw new Error('ElevenLabs API key is required');
+        }
+
+        audioBuffer = await generateAudioWithElevenLabs(
+          config.voiceOverText,
+          config.voiceId || 'EXAVITQu4vr4xnSDxMaL',
+          config.voiceSettings,
+          elevenlabsApiKey
+        );
+        
+        // Estimate duration based on text length
+        audioDuration = Math.max(config.voiceOverText.length / 12, 5);
+      }
       
     } else if (config.audioSource === 'upload' && config.uploadedAudio) {
       // For uploaded audio, we need to handle it differently

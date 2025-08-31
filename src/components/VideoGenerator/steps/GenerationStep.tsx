@@ -153,75 +153,86 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const handleDownload = async () => {
     setIsDownloading(true);
     setDownloadProgress(0);
-    setDownloadStatus('Génération de la vidéo MP4...');
+    setDownloadStatus('Génération professionnelle MP4...');
     
     try {
       toast({
         title: "Génération vidéo MP4",
-        description: "Création de votre vidéo prête pour Instagram/TikTok"
+        description: "Création professionnelle avec FFmpeg serveur"
       });
 
-      // Import VideoDownloader
-      const { VideoDownloader } = await import('../VideoDownloader');
-      
-      // Create video data object for VideoDownloader
-      const videoData = {
-        id: videoId || '',
-        title: carData.title,
-        url: window.location.href,
-        user_id: '', // Will be set by the system
-        car_data: carData,
-        overlay_text: config.overlayText,
-        voiceover_text: config.voiceOverText,
-        status: 'generated' as const,
-        platforms: Object.entries(config.socialNetworks)
-          .filter(([_, enabled]) => enabled)
-          .map(([platform]) => platform),
-        stats: { views: 0, likes: 0, shares: 0 },
-        thumbnail_url: carData.images[0],
-        video_file_path: `videos/generated_${Date.now()}.mp4`,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      setDownloadProgress(10);
+      setDownloadStatus('Préparation des données...');
 
-      // Prepare config with audio URL
-      const downloadConfig = {
-        ...config,
-        audioUrl: audioUrl,
-        audioDuration: audioDuration
-      };
+      // Get ElevenLabs API key if needed
+      let apiKey = null;
+      if (config.audioSource === 'elevenlabs') {
+        const savedSettings = localStorage.getItem('rentop-api-settings');
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+          apiKey = settings.elevenlabs?.apiKey;
+        }
+      }
 
       setDownloadProgress(25);
-      setDownloadStatus('Traitement des images...');
+      setDownloadStatus('Envoi vers serveur...');
 
-      // Add progress callback to VideoDownloader
-      const originalDownload = VideoDownloader.downloadVideo;
-      VideoDownloader.downloadVideo = async (video, cfg) => {
-        setDownloadProgress(50);
-        setDownloadStatus('Génération des frames vidéo...');
-        
-        setTimeout(() => {
-          setDownloadProgress(75);
-          setDownloadStatus('Encodage MP4...');
-        }, 2000);
-        
-        setTimeout(() => {
-          setDownloadProgress(90);
-          setDownloadStatus('Finalisation...');
-        }, 4000);
-        
-        return originalDownload.call(VideoDownloader, video, cfg);
-      };
+      // Call Edge Function for professional video generation
+      const response = await supabase.functions.invoke('generate-video', {
+        body: {
+          carData: {
+            title: carData.title,
+            images: carData.images,
+            price: carData.price,
+            location: carData.location
+          },
+          config: {
+            overlayText: config.overlayText,
+            voiceOverText: config.voiceOverText,
+            audioSource: config.audioSource,
+            voiceId: config.voiceId || 'EXAVITQu4vr4xnSDxMaL',
+            voiceSettings: config.voiceSettings,
+            audioUrl: audioUrl, // Pass existing audio URL
+            audioDuration: audioDuration,
+            uploadedAudio: config.uploadedAudio,
+            socialNetworks: config.socialNetworks,
+            textPosition: config.textPosition,
+            textStyle: config.textStyle,
+            photoEffect: config.photoEffect
+          },
+          apiKey: apiKey
+        }
+      });
 
-      // Generate and download MP4 video
-      await VideoDownloader.downloadVideo(videoData, downloadConfig);
+      if (response.error) {
+        throw new Error(`Erreur serveur: ${response.error.message}`);
+      }
+
+      setDownloadProgress(75);
+      setDownloadStatus('Traitement du MP4...');
+
+      // Convert response to blob (MP4 video)
+      const videoBlob = new Blob([response.data], { type: 'video/mp4' });
+      
+      setDownloadProgress(90);
+      setDownloadStatus('Téléchargement...');
+
+      // Download the generated MP4
+      const url = URL.createObjectURL(videoBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${carData.title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
       setDownloadProgress(100);
-      setDownloadStatus('Vidéo MP4 téléchargée !');
+      setDownloadStatus('MP4 téléchargé avec succès !');
       
       toast({
         title: "Vidéo MP4 générée !",
-        description: "Votre vidéo est prête pour Instagram et TikTok"
+        description: "Qualité professionnelle - Prête pour Instagram/TikTok"
       });
       
     } catch (error) {
@@ -229,7 +240,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
       toast({
         variant: "destructive",
         title: "Erreur de génération",
-        description: "Impossible de générer la vidéo MP4"
+        description: `Impossible de générer la vidéo MP4: ${error.message}`
       });
     } finally {
       setIsDownloading(false);
