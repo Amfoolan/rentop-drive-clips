@@ -7,7 +7,6 @@ import { CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import { UrlInputStep } from "./steps/UrlInputStep";
 import { PreviewStep } from "./steps/PreviewStep";
 import { ConfigurationStep } from "./steps/ConfigurationStep";
-import { TextEditingStep } from "./steps/TextEditingStep";
 import { FinalPreviewStep } from "./steps/FinalPreviewStep";
 import { GenerationStep } from "./steps/GenerationStep";
 
@@ -56,9 +55,8 @@ const steps = [
   { id: 1, title: "URL Rentop", description: "Coller le lien de la voiture" },
   { id: 2, title: "Aperçu", description: "Vérifier les données extraites" },
   { id: 3, title: "Configuration", description: "Textes et paramètres voix" },
-  { id: 4, title: "Éditeur visuel", description: "Personnaliser le texte" },
-  { id: 5, title: "Prévisualisation", description: "Aperçu final avant génération" },
-  { id: 6, title: "Génération", description: "Créer la vidéo TikTok" }
+  { id: 4, title: "Prévisualisation", description: "Aperçu final avant génération" },
+  { id: 5, title: "Génération", description: "Créer la vidéo TikTok" }
 ];
 
 export function StepByStepGenerator() {
@@ -195,18 +193,6 @@ export function StepByStepGenerator() {
         )}
         
         {currentStep === 4 && carData && (
-          <TextEditingStep
-            carData={carData}
-            config={videoConfig}
-            onNext={(config) => {
-              setVideoConfig(config);
-              nextStep();
-            }}
-            onPrev={prevStep}
-          />
-        )}
-        
-        {currentStep === 5 && carData && (
           <FinalPreviewStep 
             carData={carData}
             config={videoConfig}
@@ -216,7 +202,7 @@ export function StepByStepGenerator() {
           />
         )}
         
-        {currentStep === 6 && carData && (
+        {currentStep === 5 && carData && (
           <GenerationStep 
             carData={carData}
             config={videoConfig}
@@ -245,9 +231,8 @@ export function StepByStepGenerator() {
           {currentStep === 1 && "Commencez par coller un lien Rentop"}
           {currentStep === 2 && "Vérifiez les informations extraites"}
           {currentStep === 3 && "Configurez votre vidéo"}
-          {currentStep === 4 && "Personnalisez le texte avec l'éditeur visuel"}
-          {currentStep === 5 && "Prévisualisez votre vidéo finale"}
-          {currentStep === 6 && "Votre vidéo est en cours de création"}
+          {currentStep === 4 && "Prévisualisez votre vidéo finale"}
+          {currentStep === 5 && "Votre vidéo est en cours de création"}
         </div>
         
         <div className="w-24" /> {/* Spacer for centering */}
