@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   Clock,
   FileText,
-  Mic
+  Mic,
+  Music
 } from "lucide-react";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
 import { VideoPreviewModal } from "../../VideoPreviewModal";
@@ -49,15 +50,21 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack, onConfigC
   const [isTestingVoice, setIsTestingVoice] = useState(false);
 
   // Estimation des coûts et durée
-  const estimatedDuration = Math.ceil(config.voiceOverText.length / 12); // ~12 caractères par seconde
-  const estimatedCost = Math.ceil(config.voiceOverText.length / 1000) * 0.15; // Estimation ElevenLabs
+  const estimatedDuration = config.audioSource === 'upload' && config.uploadedAudio 
+    ? Math.ceil(config.uploadedAudio.duration)
+    : Math.ceil(config.voiceOverText.length / 12); // ~12 caractères par seconde
+  const estimatedCost = config.audioSource === 'elevenlabs' 
+    ? Math.ceil(config.voiceOverText.length / 1000) * 0.15 
+    : 0; // Pas de coût pour MP3 upload
   const selectedImages = carData.images.slice(0, Math.min(10, carData.images.length));
   
   const activeSocialNetworks = Object.entries(config.socialNetworks)
     .filter(([_, enabled]) => enabled)
     .map(([platform]) => platform);
 
-  const selectedVoice = elevenLabsVoices.find(v => v.id === config.voiceId) || elevenLabsVoices[0];
+  const selectedVoice = config.audioSource === 'elevenlabs' 
+    ? elevenLabsVoices.find(v => v.id === config.voiceId) || elevenLabsVoices[0]
+    : null;
 
   const updateVoiceSettings = (updates: Partial<VideoConfig['voiceSettings']>) => {
     onConfigChange({
@@ -71,6 +78,8 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack, onConfigC
   };
 
   const testVoice = async () => {
+    if (config.audioSource !== 'elevenlabs') return;
+    
     setIsTestingVoice(true);
     
     try {
@@ -138,118 +147,155 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack, onConfigC
           {/* Résumé de la configuration */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* Configuration Voix - Section étendue */}
+            {/* Configuration Audio - Conditionnelle */}
             <div className="space-y-4">
               <h4 className="font-semibold flex items-center gap-2">
-                <Mic className="h-4 w-4" />
-                Configuration de la voix
+                {config.audioSource === 'elevenlabs' ? <Mic className="h-4 w-4" /> : <Music className="h-4 w-4" />}
+                Configuration audio
               </h4>
               
-              {/* Voice Selection */}
-              <div className="bg-muted/20 rounded-lg p-4 space-y-4">
-                <div className="space-y-2">
-                  <Label>Choisir la voix</Label>
-                  <Select value={config.voiceId} onValueChange={updateVoiceId}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {elevenLabsVoices.map((voice) => (
-                        <SelectItem key={voice.id} value={voice.id}>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {voice.gender}
-                            </Badge>
-                            <span className="font-medium">{voice.name}</span>
+              {config.audioSource === 'elevenlabs' ? (
+                <>
+                  {/* ElevenLabs Voice Configuration */}
+                  <div className="bg-muted/20 rounded-lg p-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Choisir la voix</Label>
+                      <Select value={config.voiceId} onValueChange={updateVoiceId} disabled={config.audioSource !== 'elevenlabs'}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {elevenLabsVoices.map((voice) => (
+                            <SelectItem key={voice.id} value={voice.id}>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {voice.gender}
+                                </Badge>
+                                <span className="font-medium">{voice.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Selected Voice Info */}
+                      <div className="bg-primary/10 rounded-lg p-3 border border-primary/20">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-primary">{selectedVoice?.name || 'Aucune voix'}</p>
+                              {selectedVoice && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {selectedVoice.gender}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{selectedVoice?.description || 'Sélectionnez une voix'}</p>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Selected Voice Info */}
-                <div className="bg-primary/10 rounded-lg p-3 border border-primary/20">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-primary">{selectedVoice.name}</p>
-                        <Badge variant="secondary" className="text-xs">
-                          {selectedVoice.gender}
-                        </Badge>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={testVoice}
+                          disabled={isTestingVoice || config.audioSource !== 'elevenlabs'}
+                          className="flex items-center gap-2"
+                        >
+                          {isTestingVoice ? (
+                            <>
+                              <Pause className="h-3 w-3" />
+                              Test...
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-3 w-3" />
+                              Tester
+                            </>
+                          )}
+                        </Button>
                       </div>
-                      <p className="text-sm text-muted-foreground">{selectedVoice.description}</p>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={testVoice}
-                      disabled={isTestingVoice}
-                      className="flex items-center gap-2"
-                    >
-                      {isTestingVoice ? (
-                        <>
-                          <Pause className="h-3 w-3" />
-                          Test...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-3 w-3" />
-                          Tester
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
 
-                {/* Voice Parameters */}
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm">Stabilité</Label>
-                      <Badge variant="outline" className="text-xs">{Math.round(config.voiceSettings.stability * 100)}%</Badge>
-                    </div>
-                    <Slider
-                      value={[config.voiceSettings.stability]}
-                      onValueChange={([value]) => updateVoiceSettings({ stability: value })}
-                      max={1}
-                      min={0}
-                      step={0.1}
-                      className="w-full"
-                    />
-                  </div>
+                    {/* Voice Parameters */}
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm">Stabilité</Label>
+                          <Badge variant="outline" className="text-xs">{Math.round(config.voiceSettings.stability * 100)}%</Badge>
+                        </div>
+                        <Slider
+                          value={[config.voiceSettings.stability]}
+                          onValueChange={([value]) => updateVoiceSettings({ stability: value })}
+                          max={1}
+                          min={0}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm">Similarité</Label>
-                      <Badge variant="outline" className="text-xs">{Math.round(config.voiceSettings.similarity_boost * 100)}%</Badge>
-                    </div>
-                    <Slider
-                      value={[config.voiceSettings.similarity_boost]}
-                      onValueChange={([value]) => updateVoiceSettings({ similarity_boost: value })}
-                      max={1}
-                      min={0}
-                      step={0.1}
-                      className="w-full"
-                    />
-                  </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm">Similarité</Label>
+                          <Badge variant="outline" className="text-xs">{Math.round(config.voiceSettings.similarity_boost * 100)}%</Badge>
+                        </div>
+                        <Slider
+                          value={[config.voiceSettings.similarity_boost]}
+                          onValueChange={([value]) => updateVoiceSettings({ similarity_boost: value })}
+                          max={1}
+                          min={0}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm">Vitesse</Label>
-                      <Badge variant="outline" className="text-xs">{config.voiceSettings.speed}x</Badge>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm">Vitesse</Label>
+                          <Badge variant="outline" className="text-xs">{config.voiceSettings.speed}x</Badge>
+                        </div>
+                        <Slider
+                          value={[config.voiceSettings.speed]}
+                          onValueChange={([value]) => updateVoiceSettings({ speed: value })}
+                          max={2}
+                          min={0.5}
+                          step={0.1}
+                          className="w-full"
+                        />
+                      </div>
                     </div>
-                    <Slider
-                      value={[config.voiceSettings.speed]}
-                      onValueChange={([value]) => updateVoiceSettings({ speed: value })}
-                      max={2}
-                      min={0.5}
-                      step={0.1}
-                      className="w-full"
-                    />
                   </div>
-                </div>
-              </div>
+                </>
+              ) : (
+                <>
+                  {/* MP3 Upload Configuration */}
+                  <div className="bg-muted/20 rounded-lg p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Fichier audio uploadé</span>
+                      <Badge variant="outline" className="text-xs">MP3</Badge>
+                    </div>
+                    
+                    {config.uploadedAudio && (
+                      <div className="bg-primary/10 rounded-lg p-3 border border-primary/20">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                            <Music className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-primary text-sm">{config.uploadedAudio.file.name}</p>
+                            <div className="flex gap-3 mt-1">
+                              <Badge variant="secondary" className="text-xs">
+                                {Math.floor(config.uploadedAudio.duration / 60)}:{Math.floor(config.uploadedAudio.duration % 60).toString().padStart(2, '0')}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {(config.uploadedAudio.file.size / (1024 * 1024)).toFixed(1)} MB
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
               
               {/* Autres paramètres */}
               <div className="space-y-3">
@@ -277,55 +323,102 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack, onConfigC
               </div>
             </div>
 
-            {/* Texte de voix-off */}
+            {/* Contenu Audio - Conditionnel */}
             <div className="space-y-4">
-              <h4 className="font-semibold">Texte de la voix-off</h4>
+              <h4 className="font-semibold">
+                {config.audioSource === 'elevenlabs' ? 'Texte de la voix-off' : 'Fichier audio'}
+              </h4>
               
-              <div className="bg-muted/20 rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Contenu audio</span>
-                  <Badge variant="outline">
-                    {config.voiceOverText.length} caractères
-                  </Badge>
-                </div>
-                
-                <div className="text-sm">
-                  {showFullText ? (
-                    <p className="leading-relaxed">{config.voiceOverText}</p>
-                  ) : (
-                    <p className="leading-relaxed">
-                      {config.voiceOverText.substring(0, 150)}
-                      {config.voiceOverText.length > 150 && '...'}
-                    </p>
-                  )}
-                </div>
-                
-                {config.voiceOverText.length > 150 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowFullText(!showFullText)}
-                    className="text-xs"
-                  >
-                    {showFullText ? 'Voir moins' : 'Voir tout'}
-                  </Button>
-                )}
-              </div>
-              
-              {/* Note importante */}
-              <div className="bg-blue-50/50 border border-blue-200/50 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-blue-600 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-blue-800">Avant de continuer</p>
-                    <p className="text-blue-700 mt-1">
-                      La génération audio utilisera des crédits ElevenLabs. 
-                      Vérifiez bien le texte et les paramètres car il ne sera pas possible 
-                      de modifier après génération.
-                    </p>
+              {config.audioSource === 'elevenlabs' ? (
+                <>
+                  <div className="bg-muted/20 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Contenu audio</span>
+                      <Badge variant="outline">
+                        {config.voiceOverText.length} caractères
+                      </Badge>
+                    </div>
+                    
+                    <div className="text-sm">
+                      {showFullText ? (
+                        <p className="leading-relaxed">{config.voiceOverText}</p>
+                      ) : (
+                        <p className="leading-relaxed">
+                          {config.voiceOverText.substring(0, 150)}
+                          {config.voiceOverText.length > 150 && '...'}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {config.voiceOverText.length > 150 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowFullText(!showFullText)}
+                        className="text-xs"
+                      >
+                        {showFullText ? 'Voir moins' : 'Voir tout'}
+                      </Button>
+                    )}
                   </div>
-                </div>
-              </div>
+                  
+                  {/* Note importante pour ElevenLabs */}
+                  <div className="bg-blue-50/50 border border-blue-200/50 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-blue-600 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium text-blue-800">Avant de continuer</p>
+                        <p className="text-blue-700 mt-1">
+                          La génération audio utilisera des crédits ElevenLabs. 
+                          Vérifiez bien le texte et les paramètres car il ne sera pas possible 
+                          de modifier après génération.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-muted/20 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Fichier audio uploadé</span>
+                      <Badge variant="outline">MP3</Badge>
+                    </div>
+                    
+                    {config.uploadedAudio && (
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                          <Music className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{config.uploadedAudio.file.name}</p>
+                          <div className="flex gap-3 mt-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {Math.floor(config.uploadedAudio.duration / 60)}:{Math.floor(config.uploadedAudio.duration % 60).toString().padStart(2, '0')}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {(config.uploadedAudio.file.size / (1024 * 1024)).toFixed(1)} MB
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Note pour MP3 */}
+                  <div className="bg-green-50/50 border border-green-200/50 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium text-green-800">Fichier audio prêt</p>
+                        <p className="text-green-700 mt-1">
+                          Votre fichier audio sera utilisé tel quel. Les images s'adapteront à la durée de votre piste audio.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -342,8 +435,12 @@ export function FinalPreviewStep({ carData, config, onConfirm, onBack, onConfigC
                 <p className="text-sm text-muted-foreground">Durée audio</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary">${estimatedCost.toFixed(2)}</p>
-                <p className="text-sm text-muted-foreground">Coût estimé</p>
+                <p className="text-2xl font-bold text-primary">
+                  {config.audioSource === 'elevenlabs' ? `$${estimatedCost.toFixed(2)}` : 'Gratuit'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {config.audioSource === 'elevenlabs' ? 'Coût estimé' : 'MP3 personnel'}
+                </p>
               </div>
             </div>
           </div>

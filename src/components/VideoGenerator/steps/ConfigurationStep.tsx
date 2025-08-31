@@ -5,9 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Mic, Share2 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Settings, Mic, Upload, Share2, Volume2, Music } from "lucide-react";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
 import { VoiceSettings } from "../config/VoiceSettings";
+import { AudioUpload } from "../config/AudioUpload";
 import { SocialNetworkSettings } from "../config/SocialNetworkSettings";
 
 interface ConfigurationStepProps {
@@ -33,9 +35,9 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
       <CardContent>
         <Tabs defaultValue="text" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="text">Textes</TabsTrigger>
-            <TabsTrigger value="voice">Voix</TabsTrigger>
-            <TabsTrigger value="social">Réseaux</TabsTrigger>
+            <TabsTrigger value="text">Textes & Animation</TabsTrigger>
+            <TabsTrigger value="audio">Audio</TabsTrigger>
+            <TabsTrigger value="social">Réseaux sociaux</TabsTrigger>
           </TabsList>
 
           <TabsContent value="text" className="space-y-6">
@@ -273,20 +275,22 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="voiceover">Script de la voix-off</Label>
-                <Textarea
-                  id="voiceover"
-                  value={config.voiceOverText}
-                  onChange={(e) => updateConfig({ voiceOverText: e.target.value })}
-                  placeholder="Découvre la Lamborghini Huracan disponible à Dubai..."
-                  rows={5}
-                  className="resize-none"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Ce texte sera lu par la voix artificielle d'Eleven Labs
-                </p>
-              </div>
+              {config.audioSource === 'elevenlabs' && (
+                <div className="space-y-2">
+                  <Label htmlFor="voiceover">Script de la voix-off</Label>
+                  <Textarea
+                    id="voiceover"
+                    value={config.voiceOverText}
+                    onChange={(e) => updateConfig({ voiceOverText: e.target.value })}
+                    placeholder="Découvre la Lamborghini Huracan disponible à Dubai..."
+                    rows={5}
+                    className="resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ce texte sera lu par la voix artificielle d'Eleven Labs
+                  </p>
+                </div>
+              )}
 
               {/* Preview Box */}
               <div className="bg-muted/20 rounded-lg p-4 space-y-3">
@@ -312,19 +316,105 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
                     <p className="text-sm">{config.overlayText || "Aucun texte d'overlay"}</p>
                   </div>
                   <div className="bg-muted/20 rounded p-2 border border-muted/40">
-                    <span className="text-xs text-muted-foreground font-medium">VOIX-OFF</span>
-                    <p className="text-sm">{config.voiceOverText || "Aucun script de voix-off"}</p>
+                    <span className="text-xs text-muted-foreground font-medium">AUDIO</span>
+                    <p className="text-sm">
+                      {config.audioSource === 'elevenlabs' 
+                        ? (config.voiceOverText || "Aucun script de voix-off")
+                        : (config.uploadedAudio ? config.uploadedAudio.file.name : "Aucun fichier audio")
+                      }
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="voice" className="space-y-6">
-            <VoiceSettings 
-              config={config}
-              onConfigChange={onConfigChange}
-            />
+          <TabsContent value="audio" className="space-y-6">
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold">Sélectionnez votre méthode audio</h3>
+              
+              {/* Audio Source Selection */}
+              <RadioGroup 
+                value={config.audioSource} 
+                onValueChange={(value: 'elevenlabs' | 'upload') => updateConfig({ audioSource: value })}
+                className="space-y-4"
+              >
+                {/* Option 1: ElevenLabs */}
+                <div className={`border rounded-lg p-6 cursor-pointer transition-colors ${
+                  config.audioSource === 'elevenlabs' ? 'border-primary bg-primary/5' : 'border-muted hover:bg-muted/30'
+                }`}>
+                  <div className="flex items-center space-x-3">
+                    <RadioGroupItem value="elevenlabs" id="elevenlabs" />
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Mic className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <Label htmlFor="elevenlabs" className="text-base font-medium cursor-pointer">
+                          Génération automatique de voix (ElevenLabs)
+                        </Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Intelligence artificielle pour convertir votre texte en voix naturelle
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Option 2: Upload MP3 */}
+                <div className={`border rounded-lg p-6 cursor-pointer transition-colors ${
+                  config.audioSource === 'upload' ? 'border-primary bg-primary/5' : 'border-muted hover:bg-muted/30'
+                }`}>
+                  <div className="flex items-center space-x-3">
+                    <RadioGroupItem value="upload" id="upload" />
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center">
+                        <Music className="h-6 w-6 text-secondary" />
+                      </div>
+                      <div className="flex-1">
+                        <Label htmlFor="upload" className="text-base font-medium cursor-pointer">
+                          Upload manuel d'un fichier MP3
+                        </Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Utilisez votre propre piste audio (voix-off, musique, etc.)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </RadioGroup>
+
+              {/* Conditional Settings Display */}
+              <div className="mt-6">
+                {config.audioSource === 'elevenlabs' ? (
+                  <div className="space-y-4">
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium mb-4 flex items-center gap-2">
+                        <Volume2 className="h-4 w-4" />
+                        Configuration ElevenLabs
+                      </h4>
+                      <VoiceSettings 
+                        config={config}
+                        onConfigChange={onConfigChange}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium mb-4 flex items-center gap-2">
+                        <Upload className="h-4 w-4" />
+                        Upload de votre fichier audio
+                      </h4>
+                      <AudioUpload 
+                        config={config}
+                        onConfigChange={onConfigChange}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="social" className="space-y-6">
@@ -340,13 +430,22 @@ export function ConfigurationStep({ carData, config, onConfigChange, onNext }: C
             onClick={onNext} 
             className="w-full" 
             size="lg"
-            disabled={!config.overlayText || !config.voiceOverText}
+            disabled={
+              !config.overlayText || 
+              (config.audioSource === 'elevenlabs' && !config.voiceOverText) ||
+              (config.audioSource === 'upload' && !config.uploadedAudio)
+            }
           >
-            Générer la vidéo
+            Continuer vers la prévisualisation
           </Button>
-          {(!config.overlayText || !config.voiceOverText) && (
+          {(!config.overlayText || 
+            (config.audioSource === 'elevenlabs' && !config.voiceOverText) ||
+            (config.audioSource === 'upload' && !config.uploadedAudio)) && (
             <p className="text-xs text-muted-foreground text-center mt-2">
-              Veuillez remplir tous les champs texte pour continuer
+              {config.audioSource === 'elevenlabs' 
+                ? "Veuillez remplir le texte d'overlay et le script de voix-off" 
+                : "Veuillez remplir le texte d'overlay et uploader un fichier audio"
+              }
             </p>
           )}
         </div>
