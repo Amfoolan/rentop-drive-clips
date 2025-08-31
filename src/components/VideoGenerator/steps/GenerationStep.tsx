@@ -45,16 +45,24 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
     setGeneratedVideoBlob(null);
 
     try {
-      setProgress(20);
+      // Import here to avoid bundle bloat
+      const { generateVideoWithFFmpeg } = await import('@/utils/videoGenerator');
+      const { generateAudioWithElevenLabs } = await import('@/utils/audioGenerator');
+
+      setProgress(10);
       toast({
         title: "Génération de la vidéo",
-        description: "Création de la vidéo MP4 avec audio intégré..."
+        description: "Initialisation de FFmpeg et création de la vidéo MP4..."
       });
 
-      // Get API key for ElevenLabs if needed
-      let apiKey = null;
-      if (config.audioSource === 'elevenlabs') {
+      let finalAudioUrl: string | undefined;
+      let finalAudioDuration: number | undefined;
+
+      // Handle audio generation
+      if (config.audioSource === 'elevenlabs' && config.voiceOverText) {
+        // Get API key for ElevenLabs
         const savedSettings = localStorage.getItem('rentop-api-settings');
+        let apiKey = null;
         if (savedSettings) {
           const settings = JSON.parse(savedSettings);
           apiKey = settings.elevenlabs?.apiKey;
@@ -63,94 +71,57 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
         if (!apiKey) {
           throw new Error('Clé API ElevenLabs requise pour la génération audio');
         }
-      }
 
-      console.log('Sending request to generate-video edge function:', {
-        carData: {
-          images: carData.images,
-          title: carData.title,
-          price: carData.price,
-          location: carData.location
-        },
-        config: {
-          overlayText: config.overlayText,
-          voiceOverText: config.voiceOverText,
-          audioSource: config.audioSource,
-          voiceId: config.voiceId,
-          voiceSettings: config.voiceSettings,
-          uploadedAudio: config.uploadedAudio,
-          socialNetworks: config.socialNetworks,
-          photoEffect: config.photoEffect,
-          textStyle: config.textStyle,
-          textPosition: config.textPosition
-        },
-        apiKey: apiKey
-      });
-
-      const videoResponse = await supabase.functions.invoke('generate-video', {
-        body: {
-          carData: {
-            images: carData.images,
-            title: carData.title,
-            price: carData.price,
-            location: carData.location
-          },
-          config: {
-            overlayText: config.overlayText,
-            voiceOverText: config.voiceOverText,
-            audioSource: config.audioSource,
-            voiceId: config.voiceId,
-            voiceSettings: config.voiceSettings,
-            uploadedAudio: config.uploadedAudio,
-            socialNetworks: config.socialNetworks,
-            photoEffect: config.photoEffect,
-            textStyle: config.textStyle,
-            textPosition: config.textPosition
-          },
-          apiKey: apiKey
+        setProgress(15);
+        
+        try {
+          const audioResult = await generateAudioWithElevenLabs(
+            config.voiceOverText,
+            config.voiceId || 'EXAVITQu4vr4xnSDxMaL',
+            config.voiceSettings || {},
+            apiKey,
+            {
+              onProgress: (progress) => setProgress(15 + (progress * 0.15)), // 15-30%
+              onStatus: (status) => console.log('Audio status:', status)
+            }
+          );
+          
+          finalAudioUrl = audioResult.url;
+          finalAudioDuration = audioResult.duration;
+          setAudioUrl(finalAudioUrl);
+          setAudioDuration(finalAudioDuration);
+          
+        } catch (audioError) {
+          console.warn('Audio generation failed, proceeding without audio:', audioError);
+          toast({
+            title: "Audio non généré",
+            description: "Génération de la vidéo sans audio",
+            variant: "default"
+          });
         }
-      });
-
-      setProgress(80);
-
-      if (videoResponse.error) {
-        console.error('Video generation error:', videoResponse.error);
-        throw new Error(`Erreur génération vidéo: ${videoResponse.error.message || 'Erreur inconnue'}`);
+        
+      } else if (config.audioSource === 'upload' && config.uploadedAudio) {
+        finalAudioUrl = config.uploadedAudio.url;
+        finalAudioDuration = config.uploadedAudio.duration;
+        setAudioUrl(finalAudioUrl);
+        setAudioDuration(finalAudioDuration);
       }
 
-      if (!videoResponse.data) {
-        throw new Error('Aucune donnée vidéo reçue');
-      }
+      setProgress(30);
 
-      // The edge function returns the video as ArrayBuffer/Uint8Array
-      let videoBlob: Blob;
-      if (videoResponse.data instanceof ArrayBuffer) {
-        videoBlob = new Blob([videoResponse.data], { type: 'video/mp4' });
-      } else if (videoResponse.data instanceof Uint8Array) {
-        videoBlob = new Blob([videoResponse.data], { type: 'video/mp4' });
-      } else {
-        // Fallback: assume it's base64 encoded
-        const binaryString = atob(videoResponse.data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
+      // Generate video with FFmpeg
+      const videoBlob = await generateVideoWithFFmpeg(
+        carData,
+        config,
+        finalAudioUrl,
+        {
+          onProgress: (progress) => setProgress(30 + (progress * 0.65)), // 30-95%
+          onStatus: (status) => console.log('Video status:', status),
+          onToast: (title, description, variant) => toast({ title, description, variant })
         }
-        videoBlob = new Blob([bytes], { type: 'video/mp4' });
-      }
+      );
 
       setGeneratedVideoBlob(videoBlob);
-      
-      // Set audio info for UI display
-      if (config.audioSource === 'elevenlabs' && config.voiceOverText) {
-        const estimatedDuration = Math.max(config.voiceOverText.length / 12, 5);
-        setAudioDuration(estimatedDuration);
-        // Create fake audio URL for preview (not actually used for playback)
-        setAudioUrl('audio-generated');
-      } else if (config.audioSource === 'upload' && config.uploadedAudio) {
-        setAudioUrl(config.uploadedAudio.url);
-        setAudioDuration(config.uploadedAudio.duration);
-      }
-
       setProgress(100);
 
       // Save to database

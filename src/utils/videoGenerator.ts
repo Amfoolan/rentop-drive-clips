@@ -13,7 +13,7 @@ export async function generateVideoWithFFmpeg(
   config: VideoConfig, 
   audioUrl?: string,
   options: GenerateVideoOptions = {}
-): Promise<void> {
+): Promise<Blob> {
   const { onProgress, onStatus, onToast } = options;
 
   onProgress?.(0);
@@ -36,15 +36,55 @@ export async function generateVideoWithFFmpeg(
       }
     });
     
-    // Load FFmpeg with progress
+    // Load FFmpeg with multiple CDN fallbacks and retries
     onStatus?.('Chargement de FFmpeg WebAssembly...');
-    console.log('Loading FFmpeg...');
+    console.log('Loading FFmpeg with multiple CDN fallbacks...');
     
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    });
+    const cdnUrls = [
+      'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm',
+      'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm',
+      'https://cdn.skypack.dev/@ffmpeg/core@0.12.6/dist/esm'
+    ];
+
+    let ffmpegLoaded = false;
+    let lastError = null;
+
+    for (let i = 0; i < cdnUrls.length && !ffmpegLoaded; i++) {
+      const baseURL = cdnUrls[i];
+      onStatus?.(`Tentative de chargement FFmpeg depuis CDN ${i + 1}/${cdnUrls.length}...`);
+      
+      try {
+        console.log(`Trying to load FFmpeg from: ${baseURL}`);
+        
+        // Use timeout for each attempt
+        const loadPromise = ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        });
+
+        // Add timeout
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`Timeout loading from ${baseURL}`)), 30000)
+        );
+
+        await Promise.race([loadPromise, timeoutPromise]);
+        ffmpegLoaded = true;
+        console.log(`FFmpeg loaded successfully from: ${baseURL}`);
+        
+      } catch (error) {
+        console.warn(`Failed to load FFmpeg from ${baseURL}:`, error);
+        lastError = error;
+        
+        if (i < cdnUrls.length - 1) {
+          onStatus?.(`Échec CDN ${i + 1}, essai du suivant...`);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+        }
+      }
+    }
+
+    if (!ffmpegLoaded) {
+      throw new Error(`Impossible de charger FFmpeg depuis tous les CDNs. Dernière erreur: ${lastError?.message}`);
+    }
     
     console.log('FFmpeg loaded successfully');
     
@@ -146,20 +186,12 @@ export async function generateVideoWithFFmpeg(
     const data = await ffmpeg.readFile('output.mp4');
     const videoBlob = new Blob([data], { type: 'video/mp4' });
 
-    // Create download
-    const url = URL.createObjectURL(videoBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tiktok_${carData.title.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.mp4`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
     onProgress?.(100);
     onStatus?.('Terminé !');
 
-    onToast?.('Vidéo MP4 générée !', 'Votre vidéo TikTok/Instagram a été téléchargée avec succès');
+    onToast?.('Vidéo MP4 générée !', 'Votre vidéo TikTok/Instagram a été générée avec succès');
+    
+    return videoBlob;
 
   } catch (error) {
     console.error('FFmpeg video generation error:', error);
