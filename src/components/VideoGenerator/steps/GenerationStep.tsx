@@ -31,6 +31,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const [videoId, setVideoId] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
+  const [generatedVideoBlob, setGeneratedVideoBlob] = useState<Blob | null>(null);
 
   useEffect(() => {
     generateVideo();
@@ -41,83 +42,110 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
     setProgress(0);
     setAudioUrl(null);
     setAudioDuration(null);
+    setGeneratedVideoBlob(null);
 
     try {
-      // Simulate video generation process
-      const stages = [
-        { name: "Préparation des images", duration: 1000 },
-        { name: "Génération de l'audio", duration: 2000 },
-        { name: "Synchronisation audio-vidéo", duration: 1500 },
-        { name: "Assemblage de la vidéo", duration: 2500 },
-        { name: "Ajout des effets", duration: 1500 },
-        { name: "Finalisation avec audio", duration: 1000 }
-      ];
+      // Step 1: Generate audio if needed
+      setProgress(20);
+      toast({
+        title: "Génération de l'audio",
+        description: "Préparation de la voix-off..."
+      });
 
-      let currentProgress = 0;
-      for (const [index, stage] of stages.entries()) {
-        toast({
-          title: stage.name,
-          description: `Étape ${index + 1}/${stages.length}`
-        });
-
-        // Generate audio during the "Génération de l'audio" stage
-        if (stage.name === "Génération de l'audio") {
-          try {
-            if (config.audioSource === 'elevenlabs' && config.voiceOverText) {
-              // Generate audio with ElevenLabs
-              const savedSettings = localStorage.getItem('rentop-api-settings');
-              let apiKey = null;
-              
-              if (savedSettings) {
-                const settings = JSON.parse(savedSettings);
-                apiKey = settings.elevenlabs?.apiKey;
-              }
-
-              const response = await supabase.functions.invoke('test-voice', {
-                body: {
-                  voiceId: config.voiceId,
-                  text: config.voiceOverText,
-                  voiceSettings: config.voiceSettings,
-                  apiKey: apiKey
-                }
-              });
-
-              if (response.error) {
-                console.warn('Audio generation failed:', response.error);
-                toast({
-                  variant: "destructive",
-                  title: "Avertissement audio",
-                  description: "La génération audio a échoué, la vidéo sera créée sans son"
-                });
-              } else if (response.data) {
-                // Create audio URL from response
-                const blob = new Blob([response.data], { type: 'audio/mpeg' });
-                const audioUrl = URL.createObjectURL(blob);
-                setAudioUrl(audioUrl);
-                
-                // Calculate duration (estimation based on text length)
-                const estimatedDuration = Math.max(config.voiceOverText.length / 12, 5); // ~12 chars per second, min 5s
-                setAudioDuration(estimatedDuration);
-              }
-            } else if (config.audioSource === 'upload' && config.uploadedAudio) {
-              // Use uploaded audio
-              setAudioUrl(config.uploadedAudio.url);
-              setAudioDuration(config.uploadedAudio.duration);
-            }
-          } catch (error) {
-            console.warn('Audio generation error:', error);
-            toast({
-              variant: "destructive",
-              title: "Avertissement audio",
-              description: "Problème lors de la génération audio, la vidéo sera créée sans son"
-            });
-          }
+      let audioDataForVideo = null;
+      
+      if (config.audioSource === 'elevenlabs' && config.voiceOverText) {
+        const savedSettings = localStorage.getItem('rentop-api-settings');
+        let apiKey = null;
+        
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+          apiKey = settings.elevenlabs?.apiKey;
         }
 
-        await new Promise(resolve => setTimeout(resolve, stage.duration));
-        currentProgress = ((index + 1) / stages.length) * 100;
-        setProgress(currentProgress);
+        const audioResponse = await supabase.functions.invoke('test-voice', {
+          body: {
+            voiceId: config.voiceId,
+            text: config.voiceOverText,
+            voiceSettings: config.voiceSettings,
+            apiKey: apiKey
+          }
+        });
+
+        if (audioResponse.error) {
+          console.warn('Audio generation failed:', audioResponse.error);
+          toast({
+            variant: "destructive",
+            title: "Avertissement audio",
+            description: "La génération audio a échoué, la vidéo sera créée sans son"
+          });
+        } else if (audioResponse.data) {
+          const blob = new Blob([audioResponse.data], { type: 'audio/mpeg' });
+          const audioUrl = URL.createObjectURL(blob);
+          setAudioUrl(audioUrl);
+          
+          const estimatedDuration = Math.max(config.voiceOverText.length / 12, 5);
+          setAudioDuration(estimatedDuration);
+          
+          // Convert blob to base64 for the edge function
+          const arrayBuffer = await blob.arrayBuffer();
+          const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          audioDataForVideo = base64Audio;
+        }
+      } else if (config.audioSource === 'upload' && config.uploadedAudio) {
+        setAudioUrl(config.uploadedAudio.url);
+        setAudioDuration(config.uploadedAudio.duration);
+        
+        // Convert uploaded audio to base64
+        const response = await fetch(config.uploadedAudio.url);
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        audioDataForVideo = base64Audio;
       }
+
+      // Step 2: Generate video with real edge function
+      setProgress(40);
+      toast({
+        title: "Génération de la vidéo",
+        description: "Création de la vidéo MP4 avec FFmpeg..."
+      });
+
+      const videoResponse = await supabase.functions.invoke('generate-video', {
+        body: {
+          carData: {
+            images: carData.images,
+            title: carData.title,
+            price: carData.price,
+            location: carData.location
+          },
+          config: {
+            overlayText: config.overlayText,
+            voiceSettings: config.voiceSettings,
+            socialNetworks: config.socialNetworks,
+            photoEffect: config.photoEffect,
+            textStyle: config.textStyle,
+            textPosition: config.textPosition,
+            audioData: audioDataForVideo // Send audio data if available
+          }
+        }
+      });
+
+      setProgress(80);
+
+      if (videoResponse.error) {
+        throw new Error(`Erreur génération vidéo: ${videoResponse.error.message || 'Erreur inconnue'}`);
+      }
+
+      if (!videoResponse.data) {
+        throw new Error('Aucune donnée vidéo reçue');
+      }
+
+      // Convert base64 video data to blob
+      const videoBlob = new Blob([videoResponse.data], { type: 'video/mp4' });
+      setGeneratedVideoBlob(videoBlob);
+
+      setProgress(100);
 
       // Save to database
       const videoData = await saveVideo({
@@ -161,44 +189,47 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
-    if (isDownloading) return;
+    if (isDownloading || !generatedVideoBlob) return;
     
     setIsDownloading(true);
     setDownloadProgress(0);
-    setDownloadStatus('Préparation...');
+    setDownloadStatus('Préparation du téléchargement...');
     
     try {
       toast({
-        title: "Génération MP4 démarrée",
-        description: "Création du fichier MP4 avec audio synchronisé"
+        title: "Téléchargement démarré",
+        description: "Téléchargement de votre vidéo MP4"
       });
 
-      // Use client-side video generation with FFmpeg.wasm
-      const { generateVideoWithFFmpeg } = await import('@/utils/videoGenerator');
+      // Create download link for the generated video
+      const url = URL.createObjectURL(generatedVideoBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${carData.title.replace(/\s+/g, '_')}_${Date.now()}.mp4`;
       
-      await generateVideoWithFFmpeg(carData, config, audioUrl, {
-        onProgress: (progress) => {
-          setDownloadProgress(progress);
-          console.log(`Video generation progress: ${progress}%`);
-        },
-        onStatus: (status) => {
-          setDownloadStatus(status);
-          console.log(`Video generation status: ${status}`);
-        },
-        onToast: (title, description, variant = 'default') => {
-          toast({
-            title,
-            description,
-            variant: variant as any
-          });
-        }
+      setDownloadProgress(50);
+      setDownloadStatus('Téléchargement en cours...');
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setDownloadProgress(100);
+      setDownloadStatus('Téléchargement terminé');
+      
+      // Clean up the URL
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Téléchargement réussi",
+        description: "Votre vidéo MP4 a été téléchargée avec succès"
       });
       
     } catch (error) {
       console.error('Download error:', error);
       toast({
         variant: "destructive",
-        title: "Erreur de génération MP4",
+        title: "Erreur de téléchargement",
         description: `Problème: ${error.message || 'Erreur inconnue'}`
       });
     } finally {
@@ -426,23 +457,23 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
 
             {/* Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Button 
-                onClick={handleDownload} 
-                disabled={isDownloading}
-                className="flex items-center gap-2" 
-                size="lg"
-              >
-                {isDownloading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Génération...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    Télécharger MP4
-                  </>
-                )}
+               <Button 
+                 onClick={handleDownload} 
+                 disabled={isDownloading || !generatedVideoBlob}
+                 className="flex items-center gap-2" 
+                 size="lg"
+               >
+                 {isDownloading ? (
+                   <>
+                     <Loader2 className="h-4 w-4 animate-spin" />
+                     Téléchargement...
+                   </>
+                 ) : (
+                   <>
+                     <Download className="h-4 w-4" />
+                     Télécharger MP4
+                   </>
+                 )}
               </Button>
               <Button variant="outline" className="flex items-center gap-2">
                 <Share2 className="h-4 w-4" />
