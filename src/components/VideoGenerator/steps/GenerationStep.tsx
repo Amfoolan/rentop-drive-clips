@@ -220,6 +220,16 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
           const settings = JSON.parse(savedSettings);
           videoGenerationData.apiKey = settings.elevenlabs?.apiKey;
         }
+        
+        if (!videoGenerationData.apiKey) {
+          throw new Error('Clé API ElevenLabs requise pour la génération de voix IA');
+        }
+      } else if (config.audioSource === 'upload') {
+        // For uploaded audio, we'll create a video with silent audio for now
+        toast({
+          title: "Mode audio limité",
+          description: "Les fichiers uploadés créeront une vidéo avec audio silencieux. Utilisez ElevenLabs pour le meilleur résultat."
+        });
       }
 
       console.log('Calling video generation function...');
@@ -486,23 +496,28 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
               </Button>
             </div>
 
-            {/* Download Info */}
-            <div className="bg-blue-50/50 border border-blue-200/50 rounded-lg p-4">
-              <div className="flex items-start gap-2">
-                <Download className="h-4 w-4 text-blue-600 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-blue-800">Format de téléchargement</p>
-                  <p className="text-blue-700 mt-1">
-                    MP4 1080x1920 (9:16) - Compatible TikTok, Instagram Reels, YouTube Shorts
-                  </p>
-                  <p className="text-blue-600 text-xs mt-1">
-                    • Audio synchronisé {audioUrl || config.audioSource === 'upload' ? '✓' : '✗'} 
-                    • Effets visuels ✓ 
-                    • Texte overlay ✓
-                  </p>
+              {/* Download Info */}
+              <div className="bg-blue-50/50 border border-blue-200/50 rounded-lg p-4">
+                <div className="flex items-start gap-2">
+                  <Download className="h-4 w-4 text-blue-600 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-blue-800">Format de téléchargement</p>
+                    <p className="text-blue-700 mt-1">
+                      MP4 1080x1920 (9:16) - Compatible TikTok, Instagram Reels, YouTube Shorts
+                    </p>
+                    <p className="text-blue-600 text-xs mt-1">
+                      • Audio : {config.audioSource === 'elevenlabs' ? 'ElevenLabs IA ✓' : config.audioSource === 'upload' ? 'Audio silencieux (temporaire) ⚠️' : 'Aucun ✗'}
+                      • Effets visuels ✓ 
+                      • Texte overlay ✓
+                    </p>
+                    {config.audioSource === 'upload' && (
+                      <p className="text-orange-600 text-xs mt-1">
+                        ⚠️ Les fichiers MP3 uploadés ne sont pas encore supportés. Utilisez ElevenLabs pour un audio de qualité.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
           </div>
         )}
 
