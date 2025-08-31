@@ -18,7 +18,8 @@ export class VideoDownloader {
       
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${VideoDownloader.sanitizeFilename(video.title)}.mp4`;
+      // Use .webm extension since we generate WebM files for better browser compatibility
+      link.download = `${VideoDownloader.sanitizeFilename(video.title)}.webm`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -62,34 +63,76 @@ export class VideoDownloader {
     const totalFrames = videoDurationSeconds * fps;
     const imageDuration = totalFrames / Math.max(loadedImages.length, 1);
 
-    // Create video stream from canvas with audio
+    // Detect best codec support for compatibility
+    let mimeType = 'video/webm;codecs=vp8';
+    let outputType = 'video/webm';
+    
+    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+      mimeType = 'video/webm;codecs=vp9';
+      console.log('Using VP9 codec for better quality');
+    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+      mimeType = 'video/webm;codecs=vp8';
+      console.log('Using VP8 codec');
+    }
+
+    // Create video stream from canvas
     const stream = canvas.captureStream(fps);
     
-    // Add audio track if available
+    // Preload and prepare audio if available
+    let audioElement: HTMLAudioElement | null = null;
     if (config?.audioUrl) {
       try {
-        const audio = new Audio(config.audioUrl);
-        const audioCtx = new AudioContext();
-        const source = audioCtx.createMediaElementSource(audio);
-        const destination = audioCtx.createMediaStreamDestination();
-        source.connect(destination);
+        audioElement = new Audio(config.audioUrl);
+        audioElement.crossOrigin = 'anonymous';
         
-        // Add audio track to stream
-        destination.stream.getAudioTracks().forEach(track => {
-          stream.addTrack(track);
+        // Wait for audio to be ready
+        await new Promise<void>((resolve, reject) => {
+          const onCanPlay = () => {
+            audioElement!.removeEventListener('canplaythrough', onCanPlay);
+            audioElement!.removeEventListener('error', onError);
+            resolve();
+          };
+          
+          const onError = () => {
+            audioElement!.removeEventListener('canplaythrough', onCanPlay);
+            audioElement!.removeEventListener('error', onError);
+            console.warn('Audio failed to load, continuing without audio');
+            resolve(); // Continue without audio instead of failing
+          };
+          
+          audioElement!.addEventListener('canplaythrough', onCanPlay);
+          audioElement!.addEventListener('error', onError);
+          
+          // Set timeout to prevent hanging
+          setTimeout(() => {
+            audioElement!.removeEventListener('canplaythrough', onCanPlay);
+            audioElement!.removeEventListener('error', onError);
+            console.warn('Audio loading timeout, continuing without audio');
+            resolve();
+          }, 5000);
         });
-        
-        audio.play();
+
+        // Add audio to stream if successfully loaded
+        if (audioElement && !audioElement.error) {
+          const audioCtx = new AudioContext();
+          const source = audioCtx.createMediaElementSource(audioElement);
+          const destination = audioCtx.createMediaStreamDestination();
+          source.connect(destination);
+          
+          destination.stream.getAudioTracks().forEach(track => {
+            stream.addTrack(track);
+          });
+          
+          mimeType += ',opus'; // Add audio codec
+          console.log('Audio track added to stream');
+        }
       } catch (error) {
-        console.warn('Failed to add audio to video:', error);
+        console.warn('Failed to prepare audio, proceeding without:', error);
+        audioElement = null;
       }
     }
-    
-    // Use H.264 codec for better compatibility with Instagram/TikTok
-    const mediaRecorder = new MediaRecorder(stream, {
-      mimeType: 'video/webm;codecs=vp8,opus'
-    });
 
+    const mediaRecorder = new MediaRecorder(stream, { mimeType });
     const chunks: Blob[] = [];
     
     return new Promise((resolve, reject) => {
@@ -101,7 +144,8 @@ export class VideoDownloader {
 
       mediaRecorder.onstop = () => {
         console.log('Video recording stopped');
-        const videoBlob = new Blob(chunks, { type: 'video/mp4' });
+        // Use consistent format - WebM output
+        const videoBlob = new Blob(chunks, { type: outputType });
         resolve(videoBlob);
       };
 
@@ -110,13 +154,18 @@ export class VideoDownloader {
         reject(new Error('MediaRecorder error'));
       };
 
-      // Start recording
+      // Start recording and audio synchronously
       mediaRecorder.start();
+      if (audioElement && !audioElement.error) {
+        audioElement.currentTime = 0;
+        audioElement.play().catch(e => console.warn('Audio playback failed:', e));
+      }
       console.log('Started video recording');
 
-      // Generate video frames
+      // Generate video frames with stable timing
       let frameCount = 0;
-
+      let startTime = performance.now();
+      
       const generateFrame = () => {
         if (frameCount >= totalFrames) {
           mediaRecorder.stop();
@@ -139,11 +188,16 @@ export class VideoDownloader {
 
         frameCount++;
         
-        // Continue to next frame (targeting 30fps)
-        setTimeout(generateFrame, 1000 / fps);
+        // Use requestAnimationFrame for stable timing
+        const expectedTime = startTime + (frameCount * 1000 / fps);
+        const currentTime = performance.now();
+        const delay = Math.max(0, expectedTime - currentTime);
+        
+        setTimeout(() => requestAnimationFrame(generateFrame), delay);
       };
 
-      generateFrame();
+      // Start frame generation
+      requestAnimationFrame(generateFrame);
     });
   }
 
