@@ -28,6 +28,12 @@ export interface CarData {
 export interface VideoConfig {
   overlayText: string;
   voiceOverText: string;
+  audioSource: 'elevenlabs' | 'upload';
+  uploadedAudio?: {
+    file: File;
+    duration: number;
+    url: string;
+  };
   voiceId: string;
   voiceSettings: {
     stability: number;
@@ -59,6 +65,7 @@ export function StepByStepGenerator() {
   const [videoConfig, setVideoConfig] = useState<VideoConfig>({
     overlayText: "",
     voiceOverText: "",
+    audioSource: "elevenlabs",
     voiceId: "EXAVITQu4vr4xnSDxMaL", // Sarah voice
     voiceSettings: {
       stability: 0.75,

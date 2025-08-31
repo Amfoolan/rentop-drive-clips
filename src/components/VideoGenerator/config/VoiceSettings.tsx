@@ -4,10 +4,12 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mic, Play, Pause, Volume2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Mic, Play, Pause, Volume2, Upload } from "lucide-react";
 import { useState } from "react";
 import { VideoConfig } from "../StepByStepGenerator";
 import { supabase } from "@/integrations/supabase/client";
+import { AudioUpload } from "./AudioUpload";
 
 interface VoiceSettingsProps {
   config: VideoConfig;
@@ -136,14 +138,27 @@ export function VoiceSettings({ config, onConfigChange }: VoiceSettingsProps) {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-muted/20 border-muted">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+      <Tabs value={config.audioSource} onValueChange={(value) => onConfigChange({ ...config, audioSource: value as 'elevenlabs' | 'upload' })} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="elevenlabs" className="flex items-center gap-2">
             <Mic className="h-4 w-4" />
-            Configuration Eleven Labs
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+            ElevenLabs (AI)
+          </TabsTrigger>
+          <TabsTrigger value="upload" className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            Upload MP3
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="elevenlabs">
+          <Card className="bg-muted/20 border-muted">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Mic className="h-4 w-4" />
+                Configuration Eleven Labs
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
           {/* Voice Selection */}
           <div className="space-y-3">
             <Label>Voix sélectionnée</Label>
@@ -269,8 +284,17 @@ export function VoiceSettings({ config, onConfigChange }: VoiceSettingsProps) {
               {config.voiceOverText || "Aucun script configuré"}
             </p>
           </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="upload">
+          <AudioUpload 
+            config={config}
+            onConfigChange={onConfigChange}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

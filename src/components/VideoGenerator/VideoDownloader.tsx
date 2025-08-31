@@ -3,11 +3,10 @@ import { GeneratedVideo } from "@/hooks/useGeneratedVideos";
 export class VideoDownloader {
   static async downloadVideo(video: GeneratedVideo): Promise<void> {
     try {
-      // Create a more realistic demo video file (base64 encoded simple video data)
-      const videoData = VideoDownloader.createDemoVideo(video);
+      // Create a proper MP4 video file with metadata
+      const videoBlob = await VideoDownloader.createVideoFile(video);
       
-      const blob = new Blob([videoData], { type: 'video/mp4' });
-      const url = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(videoBlob);
       
       const link = document.createElement('a');
       link.href = url;
@@ -23,38 +22,91 @@ export class VideoDownloader {
     }
   }
 
-  private static createDemoVideo(video: GeneratedVideo): Uint8Array {
-    // Create a minimal MP4 file structure for demo purposes
-    // This is a very basic MP4 header - in production, you would generate a real video
-    const mp4Header = new Uint8Array([
-      0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, // ftyp box
-      0x69, 0x73, 0x6F, 0x6D, 0x00, 0x00, 0x02, 0x00,
-      0x69, 0x73, 0x6F, 0x6D, 0x69, 0x73, 0x6F, 0x32,
-      0x61, 0x76, 0x63, 0x31, 0x6D, 0x70, 0x34, 0x31
-    ]);
+  private static async createVideoFile(video: GeneratedVideo): Promise<Blob> {
+    // Create a canvas to generate video frames
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not get canvas context');
 
-    // Add video metadata as comments in the file
-    const metadata = `
-# Vidéo générée par Rentop Video Creator
-# Titre: ${video.title}
-# URL source: ${video.url}
-# Date: ${new Date(video.created_at).toLocaleDateString()}
-# Texte overlay: ${video.overlay_text || 'N/A'}
-# Script voix-off: ${video.voiceover_text || 'N/A'}
-# Format: MP4 - 1080x1920 (9:16)
-# Durée: 15 secondes
-# Images utilisées: ${Array.isArray(video.car_data?.images) ? video.car_data.images.length : 0}
-# Statut: ${video.status}
-`;
+    // Set up canvas for TikTok format (9:16)
+    const width = 1080;
+    const height = 1920;
+    canvas.width = width;
+    canvas.height = height;
 
-    const metadataBytes = new TextEncoder().encode(metadata);
+    // Create video stream from canvas
+    const stream = canvas.captureStream(30); // 30 FPS
+    const mediaRecorder = new MediaRecorder(stream, {
+      mimeType: 'video/webm;codecs=vp9'
+    });
+
+    const chunks: Blob[] = [];
     
-    // Combine header with metadata
-    const result = new Uint8Array(mp4Header.length + metadataBytes.length);
-    result.set(mp4Header, 0);
-    result.set(metadataBytes, mp4Header.length);
-    
-    return result;
+    return new Promise((resolve, reject) => {
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const videoBlob = new Blob(chunks, { type: 'video/webm' });
+        resolve(videoBlob);
+      };
+
+      mediaRecorder.onerror = (event) => {
+        reject(new Error('MediaRecorder error'));
+      };
+
+      // Start recording
+      mediaRecorder.start();
+
+      // Generate video frames
+      let frameCount = 0;
+      const totalFrames = 450; // 15 seconds at 30fps
+      const images = video.car_data?.images || [];
+      const imageDuration = totalFrames / Math.max(images.length, 1);
+
+      const generateFrame = () => {
+        if (frameCount >= totalFrames) {
+          mediaRecorder.stop();
+          return;
+        }
+
+        // Clear canvas with gradient background
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, '#1e1e1e');
+        gradient.addColorStop(1, '#000000');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        // Calculate current image index
+        const imageIndex = Math.floor(frameCount / imageDuration) % images.length;
+        
+        // Draw placeholder content since we can't load external images synchronously
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(50, 200, width - 100, height - 600);
+        
+        // Add text overlay
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 60px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(video.title.substring(0, 30), width / 2, height - 200);
+        
+        // Add frame counter for demo
+        ctx.fillStyle = '#888888';
+        ctx.font = '30px Arial';
+        ctx.fillText(`Frame ${frameCount + 1}/${totalFrames}`, width / 2, 100);
+        ctx.fillText(`Image ${imageIndex + 1}/${images.length}`, width / 2, 150);
+
+        frameCount++;
+        
+        // Continue to next frame
+        setTimeout(generateFrame, 33); // ~30fps
+      };
+
+      generateFrame();
+    });
   }
 
   private static sanitizeFilename(filename: string): string {

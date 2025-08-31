@@ -15,6 +15,12 @@ interface VideoPreviewModalProps {
   config?: {
     overlayText: string;
     voiceOverText: string;
+    audioSource: 'elevenlabs' | 'upload';
+    uploadedAudio?: {
+      file: File;
+      duration: number;
+      url: string;
+    };
     textStyle: string;
     photoEffect: string;
     textPosition?: string;
@@ -38,27 +44,44 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
     setIsPreviewPlaying(true);
     setCurrentImageIndex(0);
     
-    // Cycle through images every 2 seconds
+    // Calculate total duration and image timing based on audio
+    let totalDuration = 15000; // Default 15 seconds
+    if (config?.audioSource === 'upload' && config.uploadedAudio) {
+      totalDuration = config.uploadedAudio.duration * 1000; // Convert to milliseconds
+    }
+    
+    // Calculate how long each image should be shown
+    const imageDisplayTime = Math.max(1000, totalDuration / mockImages.length); // Minimum 1 second per image
+    
+    // Create repeated image sequence if needed
+    const imagesNeeded = Math.ceil(totalDuration / imageDisplayTime);
+    const repeatedImages = [];
+    for (let i = 0; i < imagesNeeded; i++) {
+      repeatedImages.push(mockImages[i % mockImages.length]);
+    }
+    
+    let currentImageIdx = 0;
+    
+    // Cycle through images
     const imageInterval = setInterval(() => {
-      setCurrentImageIndex(prev => {
-        const nextIndex = prev + 1;
-        if (nextIndex >= mockImages.length) {
-          clearInterval(imageInterval);
-          setTimeout(() => {
-            setIsPreviewPlaying(false);
-            setCurrentImageIndex(0);
-          }, 500);
-          return prev;
-        }
-        return nextIndex;
-      });
-    }, 2000);
+      currentImageIdx++;
+      setCurrentImageIndex(currentImageIdx);
+      
+      if (currentImageIdx >= repeatedImages.length - 1) {
+        clearInterval(imageInterval);
+        setTimeout(() => {
+          setIsPreviewPlaying(false);
+          setCurrentImageIndex(0);
+        }, 500);
+      }
+    }, imageDisplayTime);
 
-    // Total duration: number of images * 2 seconds
+    // Stop after total duration
     setTimeout(() => {
+      clearInterval(imageInterval);
       setIsPreviewPlaying(false);
       setCurrentImageIndex(0);
-    }, mockImages.length * 2000 + 500);
+    }, totalDuration + 500);
   };
 
   const getEffectName = (effect: string) => {
@@ -185,16 +208,16 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                    {/* Preview Controls Overlay */}
                    {!isPreviewPlaying && (
                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-30">
-                       <Button 
-                         onClick={playPreview}
-                         disabled={!config}
-                         variant="hero"
-                         size="lg"
-                         className="bg-white/20 hover:bg-white/30 backdrop-blur"
-                       >
-                         <Play className="mr-2 h-5 w-5" />
-                         Aperçu ({mockImages.length * 2}s)
-                       </Button>
+                        <Button 
+                          onClick={playPreview}
+                          disabled={!config}
+                          variant="hero"
+                          size="lg"
+                          className="bg-white/20 hover:bg-white/30 backdrop-blur"
+                        >
+                          <Play className="mr-2 h-5 w-5" />
+                          Aperçu ({config?.audioSource === 'upload' && config.uploadedAudio ? Math.ceil(config.uploadedAudio.duration) : mockImages.length * 2}s)
+                        </Button>
                      </div>
                    )}
 
@@ -237,7 +260,7 @@ export function VideoPreviewModal({ carData, config }: VideoPreviewModalProps) {
                   Format TikTok 9:16
                 </Badge>
                 <Badge variant="outline" className="text-xs">
-                  Durée: ~{mockImages.length * 2}s
+                  Durée: ~{config?.audioSource === 'upload' && config.uploadedAudio ? Math.ceil(config.uploadedAudio.duration) : mockImages.length * 2}s
                 </Badge>
               </div>
               
