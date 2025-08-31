@@ -97,7 +97,21 @@ export function VideoPreview({
       // Start audio if available
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(console.warn);
+        audioRef.current.muted = isMuted;
+        audioRef.current.play().catch((error) => {
+          console.warn('Audio play failed:', error);
+          // Show user-friendly message
+          if (typeof window !== 'undefined') {
+            const event = new CustomEvent('show-toast', {
+              detail: {
+                title: "Audio indisponible",
+                description: "La lecture audio nécessite une interaction utilisateur.",
+                variant: "default"
+              }
+            });
+            window.dispatchEvent(event);
+          }
+        });
       }
 
       // Image cycling
@@ -216,27 +230,59 @@ export function VideoPreview({
 
                 {/* Play/Pause Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    onClick={handlePlayPause}
-                    className="rounded-full w-12 h-12 bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30"
-                  >
-                    {isPlaying ? (
-                      <Pause className="h-5 w-5 text-white" />
-                    ) : (
-                      <Play className="h-5 w-5 ml-0.5 text-white" />
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      onClick={handlePlayPause}
+                      className="rounded-full w-14 h-14 bg-white/20 backdrop-blur-sm border border-white/30 hover:bg-white/30 transition-all duration-200 hover:scale-105"
+                    >
+                      {isPlaying ? (
+                        <Pause className="h-6 w-6 text-white" />
+                      ) : (
+                        <Play className="h-6 w-6 ml-0.5 text-white" />
+                      )}
+                    </Button>
+                    
+                    {/* Volume Control - Always Visible */}
+                    {audioUrl && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={toggleMute}
+                        className="rounded-full w-8 h-8 bg-black/40 backdrop-blur-sm border border-white/30 hover:bg-black/60 transition-all duration-200"
+                      >
+                        {isMuted ? (
+                          <VolumeX className="h-4 w-4 text-white" />
+                        ) : (
+                          <Volume2 className="h-4 w-4 text-white" />
+                        )}
+                      </Button>
                     )}
-                  </Button>
+                  </div>
+                  
+                  {/* Audio Status Indicator */}
+                  {audioUrl && isPlaying && !isMuted && (
+                    <div className="absolute bottom-4 right-4">
+                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-full px-2 py-1 border border-white/30">
+                        <Volume2 className="h-3 w-3 text-white" />
+                        <div className="flex gap-0.5">
+                          <div className="w-0.5 h-2 bg-white/60 rounded animate-pulse"></div>
+                          <div className="w-0.5 h-3 bg-white/80 rounded animate-pulse" style={{animationDelay: '0.1s'}}></div>
+                          <div className="w-0.5 h-2 bg-white/60 rounded animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Progress Indicators */}
-              <div className="absolute top-2 left-2 right-2 flex gap-0.5">
+              <div className="absolute top-2 right-2 flex gap-0.5">
                 {carData.images.map((_, index) => (
                   <div
                     key={index}
-                    className={`h-0.5 flex-1 rounded-full transition-all duration-300 ${
+                    className={`h-0.5 w-8 rounded-full transition-all duration-300 ${
                       index < currentImageIndex 
                         ? 'bg-white' 
                         : index === currentImageIndex && isPlaying
@@ -247,21 +293,25 @@ export function VideoPreview({
                 ))}
               </div>
 
-              {/* Sound Control */}
-              {audioUrl && isPlaying && (
-                <div className="absolute top-2 right-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={toggleMute}
-                    className="rounded-full w-6 h-6 bg-black/30 backdrop-blur-sm border border-white/30 hover:bg-black/50 p-0"
-                  >
-                    {isMuted ? (
-                      <VolumeX className="h-3 w-3 text-white" />
-                    ) : (
-                      <Volume2 className="h-3 w-3 text-white" />
-                    )}
-                  </Button>
+              {/* Audio Waveform Indicator */}
+              {audioUrl && isPlaying && !isMuted && (
+                <div className="absolute top-2 left-2">
+                  <div className="flex items-center gap-0.5 bg-black/30 backdrop-blur-sm rounded px-2 py-1 border border-white/30">
+                    <Volume2 className="h-3 w-3 text-white" />
+                    <div className="flex gap-0.5 ml-1">
+                      {[...Array(4)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="w-0.5 bg-white rounded animate-pulse"
+                          style={{
+                            height: Math.random() * 8 + 4 + 'px',
+                            animationDelay: `${i * 0.1}s`,
+                            animationDuration: '0.8s'
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -270,21 +320,54 @@ export function VideoPreview({
           {/* Audio Preview - Compact */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-sm">Audio</h4>
+              <div className="flex items-center gap-2">
+                <h4 className="font-medium text-sm">Audio</h4>
+                {audioUrl && (
+                  <div className="flex items-center gap-1">
+                    <Volume2 className="h-3 w-3 text-muted-foreground" />
+                    <Badge variant={isMuted ? "outline" : "secondary"} className="text-xs">
+                      {isMuted ? "Muet" : "Activé"}
+                    </Badge>
+                  </div>
+                )}
+              </div>
               <Badge variant="outline" className="text-xs">
                 {audioDuration ? `${Math.ceil(audioDuration)}s` : `${Math.ceil(totalDuration/1000)}s`}
               </Badge>
             </div>
-            <div className="p-2 bg-muted/30 rounded-md border border-border/50">
+            <div className="p-2 bg-muted/30 rounded-md border border-border/50 relative">
               <p className="text-xs text-muted-foreground italic line-clamp-2">
                 "{carData.voiceOver}"
               </p>
+              {audioUrl && !isMuted && isPlaying && (
+                <div className="absolute top-1 right-1">
+                  <div className="flex gap-0.5">
+                    {[...Array(3)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-0.5 h-2 bg-primary rounded animate-pulse"
+                        style={{animationDelay: `${i * 0.15}s`}}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             {isPlaying && (
               <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Progression vidéo</span>
+                  <span>{Math.round(progress)}%</span>
+                </div>
                 <Progress value={progress} className="h-1" />
                 {audioUrl && audioDuration && (
-                  <Progress value={audioProgress} className="h-0.5 opacity-60" />
+                  <>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Audio sync</span>
+                      <span>{Math.round(audioProgress)}%</span>
+                    </div>
+                    <Progress value={audioProgress} className="h-0.5 bg-primary/20" />
+                  </>
                 )}
               </div>
             )}
