@@ -111,15 +111,39 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
         });
       }
 
-      // Generate video preview data
+      // Generate video on server
       setProgress(50);
       toast({
-        title: "Préparation vidéo",
-        description: "Génération de votre vidéo TikTok..."
+        title: "Génération vidéo serveur",
+        description: "Création de votre vidéo MP4 haute qualité..."
       });
 
-      setVideoDownloadUrl("client-generated"); // Mark as ready for client download
-      setProgress(100);
+      try {
+        const videoResult = await supabase.functions.invoke('video-encoder', {
+          body: {
+            carData,
+            config: {
+              ...config,
+              audioUrl: finalAudioUrl
+            },
+            audioUrl: finalAudioUrl
+          }
+        });
+
+        if (videoResult.error) {
+          throw new Error(videoResult.error.message || 'Erreur génération serveur');
+        }
+
+        const { videoUrl } = videoResult.data;
+        setVideoDownloadUrl(videoUrl);
+        setProgress(100);
+
+        console.log('Server video generated:', videoUrl);
+      } catch (serverError) {
+        console.warn('Server generation failed, falling back to client:', serverError);
+        setVideoDownloadUrl("client-generated");
+        setProgress(100);
+      }
 
       // Save to database
       const savedVideoData = await saveVideo({

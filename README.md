@@ -1,73 +1,76 @@
-# Welcome to your Lovable project
+# Rentop Video Generator
 
-## Project info
+Générateur de vidéos TikTok automatique pour locations de voitures à Dubai.
 
-**URL**: https://lovable.dev/projects/de781d46-5b2b-43dd-bb6b-511115353a70
+## 🚀 Déploiement sur Vercel
 
-## How can I edit this code?
+### 1. Prérequis
+- Compte Vercel
+- Projet Supabase configuré
 
-There are several ways of editing your application.
+### 2. Variables d'environnement
+Ajoutez ces variables dans votre projet Vercel :
 
-**Use Lovable**
+```bash
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/de781d46-5b2b-43dd-bb6b-511115353a70) and start prompting.
+### 3. Déploiement automatique
+1. Connectez votre repo GitHub à Vercel
+2. Les variables d'environnement sont configurées automatiquement
+3. Le build se lance automatiquement
 
-Changes made via Lovable will be committed automatically to this repo.
+### 4. Configuration Supabase
+Assurez-vous que vos Edge Functions sont déployées :
+```bash
+supabase functions deploy video-encoder
+supabase functions deploy scrape-rentop
+```
 
-**Use your preferred IDE**
+## 📁 Structure du projet
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```
+src/
+├── components/
+│   ├── VideoGenerator/     # Composants génération vidéo
+│   ├── Auth/              # Authentification
+│   └── ui/                # Composants UI
+├── hooks/                 # Hooks React
+├── utils/                 # Utilitaires
+└── integrations/          # Intégrations externes
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+supabase/
+├── functions/             # Edge Functions
+└── migrations/            # Migrations DB
+```
 
-Follow these steps:
+## 🎥 Fonctionnalités
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- ✅ Scraping automatique Rentop
+- ✅ Génération vidéo côté serveur
+- ✅ Audio IA (ElevenLabs)
+- ✅ Effets visuels avancés
+- ✅ Export MP4 haute qualité
+- ✅ Interface intuitive
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## 🛠️ Développement local
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 📱 Formats supportés
+- **Sortie** : MP4 (1080x1920) - Format TikTok/Instagram Reels
+- **Audio** : ElevenLabs IA, Upload MP3, ou Muet
+- **Images** : Automatique via Rentop ou upload manuel
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## Original Lovable Info
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+**URL**: https://lovable.dev/projects/de781d46-5b2b-43dd-bb6b-511115353a70
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/de781d46-5b2b-43dd-bb6b-511115353a70) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### Développement avec Lovable
+Visitez le [Lovable Project](https://lovable.dev/projects/de781d46-5b2b-43dd-bb6b-511115353a70) pour éditer via IA.
