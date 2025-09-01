@@ -10,11 +10,10 @@ import { createClient } from "@supabase/supabase-js";
 
 ffmpeg.setFfmpegPath(ffmpegPath!);
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const BUCKET = "public"; // Assure qu'il est Public (lecture publique)
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 async function downloadTo(path: string, url: string) {
   const r = await fetch(url);
@@ -25,49 +24,37 @@ async function downloadTo(path: string, url: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as {
-      images: string[];
-      audio?: string;
-      title?: string;
-      fps?: number;
-      durationPerImage?: number;
-      width?: number;
-      height?: number;
-    };
+    const body = await req.json();
+    const { images, audio, fps = 30, durationPerImage = 2, width = 1080, height = 1920 } = body;
 
-    const width = body.width ?? 1080;
-    const height = body.height ?? 1920;
-    const fps = body.fps ?? 30;
-    const dPer = body.durationPerImage ?? 2;
-
-    if (!Array.isArray(body.images) || body.images.length < 2) {
-      throw new Error("Provide at least 2 image URLs in 'images'.");
+    if (!Array.isArray(images) || images.length < 2) {
+      throw new Error("Provide at least 2 image URLs");
     }
 
     const work = await mkdtemp(join(tmpdir(), "encode-"));
     try {
-      // 1) Télécharger images (+ audio optionnel)
       const localImages: string[] = [];
-      for (let i = 0; i < body.images.length; i++) {
+      for (let i = 0; i < images.length; i++) {
         const p = join(work, `img_${String(i).padStart(4, "0")}.jpg`);
-        await downloadTo(p, body.images[i]);
+        await downloadTo(p, images[i]);
         localImages.push(p);
       }
+
       let audioPath: string | undefined;
-      if (body.audio) {
+      if (audio) {
         audioPath = join(work, "audio.mp3");
-        await downloadTo(audioPath, body.audio);
+        await downloadTo(audioPath, audio);
       }
 
-      // 2) Fichier concat
-      const listTxt =
-        localImages.map(p => `file '${p.replace(/'/g, "'\\''")}'\nduration ${dPer}`).join("\n") +
-        `\nfile '${localImages[localImages.length - 1].replace(/'/g, "'\\''")}'`;
+      const listTxt = localImages
+        .map(p => `file '${p}'\nduration ${durationPerImage}`)
+        .join("\n") + `\nfile '${localImages[localImages.length - 1]}'`;
+
       const listPath = join(work, "list.txt");
       await writeFile(listPath, listTxt);
 
-      // 3) Encodage MP4
       const outPath = join(work, "out.mp4");
+
       await new Promise<void>((resolve, reject) => {
         let cmd = ffmpeg()
           .input(listPath)
@@ -79,12 +66,7 @@ export async function POST(req: NextRequest) {
           ])
           .outputOptions([
             "-c:v libx264",
-            "-profile:v baseline",
-            "-level 3.1",
             "-pix_fmt yuv420p",
-            "-preset medium",
-            "-crf 23",
-            `-g ${fps * 2}`,
             "-movflags +faststart"
           ]);
 
@@ -99,23 +81,21 @@ export async function POST(req: NextRequest) {
            .save(outPath);
       });
 
-      // 4) Upload Supabase & URL publique
-      const buf = await readFile(outPath);
-      const key = `clips/${Date.now()}.mp4`;
-      const { error: upErr } = await supabase.storage
-        .from(BUCKET)
-        .upload(key, buf, { contentType: "video/mp4", upsert: false });
-      if (upErr) throw upErr;
+      const fileBuf = await readFile(outPath);
+      const fileName = `clips/${Date.now()}.mp4`;
 
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(key);
-      console.log("ENCODED_MP4_URL", pub.publicUrl);
+      const { error } = await supabase.storage
+        .from("public")
+        .upload(fileName, fileBuf, { contentType: "video/mp4" });
+      if (error) throw error;
 
-      return NextResponse.json({ ok: true, url: pub.publicUrl });
+      const { data: { publicUrl } } = supabase.storage.from("public").getPublicUrl(fileName);
+
+      return NextResponse.json({ ok: true, url: publicUrl });
     } finally {
-      try { await rm(work, { recursive: true, force: true }); } catch {}
+      await rm(work, { recursive: true, force: true });
     }
   } catch (e: any) {
-    console.error(e);
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
   }
 }
