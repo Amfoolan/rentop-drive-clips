@@ -1,4 +1,5 @@
 import { CarData, VideoConfig } from './StepByStepGenerator';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface FFmpegGenerationOptions {
   onProgress?: (progress: number) => void;
@@ -16,11 +17,11 @@ export class FFmpegVideoGenerator {
     const { onProgress, onStatus, onToast } = options;
 
     try {
-      onStatus?.('Initialisation de la génération vidéo...');
+      onStatus?.('Initialisation de la génération vidéo côté serveur...');
       onProgress?.(0);
 
-      // Try MediaRecorder API first (more reliable)
-      const videoBlob = await this.generateWithMediaRecorder(
+      // Use server-side encoding via Supabase Edge Function
+      const videoBlob = await this.generateWithServerEncoding(
         carData,
         config,
         audioUrl,
@@ -30,134 +31,64 @@ export class FFmpegVideoGenerator {
       return videoBlob;
 
     } catch (error) {
-      console.error('Video generation failed:', error);
+      console.error('Server video generation failed:', error);
       onToast?.('Erreur de génération', `Impossible de générer la vidéo: ${error.message}`, 'destructive');
       throw error;
     }
   }
 
-  private static async generateWithMediaRecorder(
+  private static async generateWithServerEncoding(
     carData: CarData,
     config: VideoConfig,
     audioUrl?: string,
     options: FFmpegGenerationOptions = {}
   ): Promise<Blob> {
-    const { onProgress, onStatus } = options;
+    const { onProgress, onStatus, onToast } = options;
     
-    return new Promise((resolve, reject) => {
-      try {
-        onStatus?.('Création du canvas vidéo...');
-        onProgress?.(10);
+    try {
+      onStatus?.('Envoi des données au serveur...');
+      onProgress?.(10);
 
-        // Create canvas for video generation
-        const canvas = document.createElement('canvas');
-        canvas.width = 1080;
-        canvas.height = 1920;
-        const ctx = canvas.getContext('2d')!;
-
-        // Setup MediaRecorder
-        const stream = canvas.captureStream(30);
-        let mediaRecorder: MediaRecorder;
-        
-        // Add audio if provided
-        if (audioUrl) {
-          const audio = new Audio(audioUrl);
-          const audioCtx = new AudioContext();
-          const audioSource = audioCtx.createMediaElementSource(audio);
-          const dest = audioCtx.createMediaStreamDestination();
-          audioSource.connect(dest);
-          
-          // Combine video and audio streams
-          const combinedStream = new MediaStream([
-            ...stream.getVideoTracks(),
-            ...dest.stream.getAudioTracks()
-          ]);
-          mediaRecorder = new MediaRecorder(combinedStream);
-        } else {
-          mediaRecorder = new MediaRecorder(stream);
+      // Call the new server-side encoding Edge Function
+      const { data, error } = await supabase.functions.invoke('video-encoder-v2', {
+        body: {
+          carData: carData,
+          config: config,
+          audioUrl: audioUrl
         }
+      });
 
-        const chunks: Blob[] = [];
-        let currentImageIndex = 0;
-        const imageDuration = 3000; // 3 seconds per image
-        let startTime = Date.now();
-
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            chunks.push(event.data);
-          }
-        };
-
-        mediaRecorder.onstop = () => {
-          const videoBlob = new Blob(chunks, { type: 'video/webm' });
-          resolve(videoBlob);
-        };
-
-        mediaRecorder.onerror = (error) => {
-          reject(error);
-        };
-
-        // Animation loop
-        const animate = async () => {
-          const elapsed = Date.now() - startTime;
-          const progress = Math.min(elapsed / (carData.images.length * imageDuration), 1);
-          
-          onProgress?.(10 + progress * 80);
-
-          // Clear canvas
-          ctx.fillStyle = '#000000';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-          // Draw current image
-          if (currentImageIndex < carData.images.length) {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            
-            img.onload = () => {
-              // Calculate dimensions to fit image in canvas
-              const aspectRatio = img.width / img.height;
-              let drawWidth = canvas.width;
-              let drawHeight = canvas.width / aspectRatio;
-              
-              if (drawHeight > canvas.height) {
-                drawHeight = canvas.height;
-                drawWidth = canvas.height * aspectRatio;
-              }
-              
-              const x = (canvas.width - drawWidth) / 2;
-              const y = (canvas.height - drawHeight) / 2;
-              
-              ctx.drawImage(img, x, y, drawWidth, drawHeight);
-              
-              // Add text overlay
-              this.addTextOverlay(ctx, carData, config);
-              
-              // Continue animation
-              if (progress < 1) {
-                if (elapsed >= (currentImageIndex + 1) * imageDuration) {
-                  currentImageIndex++;
-                }
-                setTimeout(() => animate(), 33); // ~30fps
-              } else {
-                onStatus?.('Finalisation de la vidéo...');
-                onProgress?.(90);
-                setTimeout(() => mediaRecorder.stop(), 500);
-              }
-            };
-            
-            img.src = carData.images[currentImageIndex];
-          }
-        };
-
-        // Start recording
-        onStatus?.('Démarrage de l\'enregistrement...');
-        mediaRecorder.start();
-        animate();
-
-      } catch (error) {
-        reject(error);
+      if (error) {
+        throw new Error(`Server encoding failed: ${error.message}`);
       }
-    });
+
+      if (!data?.success || !data?.url) {
+        throw new Error(data?.error || 'Server returned invalid response');
+      }
+
+      onStatus?.('Téléchargement de la vidéo...');
+      onProgress?.(80);
+
+      // Download the generated video
+      const videoResponse = await fetch(data.url);
+      if (!videoResponse.ok) {
+        throw new Error(`Failed to download video: ${videoResponse.status}`);
+      }
+
+      const videoBlob = await videoResponse.blob();
+      
+      onStatus?.('Vidéo générée avec succès !');
+      onProgress?.(100);
+      
+      onToast?.('Succès !', `Vidéo MP4 générée côté serveur (${Math.round(videoBlob.size / 1024 / 1024 * 100) / 100} MB)`, 'default');
+
+      return videoBlob;
+
+    } catch (error) {
+      console.error('Server encoding error:', error);
+      onToast?.('Erreur serveur', `Échec encodage: ${error.message}`, 'destructive');
+      throw error;
+    }
   }
 
   private static addTextOverlay(

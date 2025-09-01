@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Dashboard } from "@/components/Dashboard";
 import { StepByStepGenerator } from "@/components/VideoGenerator/StepByStepGenerator";
+import { ServerVideoGenerator } from "@/components/ServerVideoGenerator";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserMenu } from "@/components/Auth/UserMenu";
-import { Wand2, BarChart3 } from "lucide-react";
+import { Wand2, BarChart3, Server } from "lucide-react";
 import heroImage from "@/assets/hero-image.jpg";
 
 const Index = () => {
@@ -36,17 +37,33 @@ const Index = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="url-generator" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs defaultValue="server-generator" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="server-generator" className="flex items-center gap-2">
+              <Server className="h-4 w-4" />
+              Encodage Serveur
+            </TabsTrigger>
             <TabsTrigger value="url-generator" className="flex items-center gap-2">
               <Wand2 className="h-4 w-4" />
-              Créateur de Vidéos
+              Rentop URLs
             </TabsTrigger>
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Dashboard
             </TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="server-generator">
+            <div className="space-y-4">
+              <div className="text-center">
+                <h2 className="text-2xl font-semibold mb-2">🚀 Encodage Serveur</h2>
+                <p className="text-muted-foreground">
+                  Nouvelle méthode d'encodage côté serveur - Plus rapide et fiable
+                </p>
+              </div>
+              <ServerVideoGenerator />
+            </div>
+          </TabsContent>
           
           <TabsContent value="url-generator">
             <StepByStepGenerator />
