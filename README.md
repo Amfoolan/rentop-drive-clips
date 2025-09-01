@@ -1,76 +1,181 @@
-# Rentop Video Generator
+# Rentop Drive Clips
 
-Générateur de vidéos TikTok automatique pour locations de voitures à Dubai.
+Générateur de vidéos MP4 avec encodage serveur Next.js et FFmpeg.
 
-## 🚀 Déploiement sur Vercel
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/YOUR_USERNAME/rentop-drive-clips&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
-### 1. Prérequis
-- Compte Vercel
-- Projet Supabase configuré
+## Fonctionnalités
 
-### 2. Variables d'environnement
-Ajoutez ces variables dans votre projet Vercel :
+- ✅ Encodage vidéo MP4 côté serveur avec FFmpeg
+- ✅ Format de sortie: H.264 + AAC, 1080x1920, 30fps
+- ✅ Support audio MP3 optionnel
+- ✅ Stockage automatique dans Supabase Storage
+- ✅ Interface web simple et intuitive
+- ✅ Téléchargement direct des vidéos générées
 
-```bash
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+## Architecture
 
-### 3. Déploiement automatique
-1. Connectez votre repo GitHub à Vercel
-2. Les variables d'environnement sont configurées automatiquement
-3. Le build se lance automatiquement
+- **Frontend**: Next.js 14 App Router + Tailwind CSS
+- **Encodage**: Node.js + fluent-ffmpeg + ffmpeg-static
+- **Stockage**: Supabase Storage (bucket public)
+- **Déploiement**: Vercel avec runtime Node.js
 
-### 4. Configuration Supabase
-Assurez-vous que vos Edge Functions sont déployées :
-```bash
-supabase functions deploy video-encoder
-supabase functions deploy scrape-rentop
-```
-
-## 📁 Structure du projet
-
-```
-src/
-├── components/
-│   ├── VideoGenerator/     # Composants génération vidéo
-│   ├── Auth/              # Authentification
-│   └── ui/                # Composants UI
-├── hooks/                 # Hooks React
-├── utils/                 # Utilitaires
-└── integrations/          # Intégrations externes
-
-supabase/
-├── functions/             # Edge Functions
-└── migrations/            # Migrations DB
-```
-
-## 🎥 Fonctionnalités
-
-- ✅ Scraping automatique Rentop
-- ✅ Génération vidéo côté serveur
-- ✅ Audio IA (ElevenLabs)
-- ✅ Effets visuels avancés
-- ✅ Export MP4 haute qualité
-- ✅ Interface intuitive
-
-## 🛠️ Développement local
+## Installation locale
 
 ```bash
+# Cloner le repository
+git clone https://github.com/YOUR_USERNAME/rentop-drive-clips.git
+cd rentop-drive-clips
+
+# Installer les dépendances
 npm install
+
+# Configurer les variables d'environnement
+cp .env.example .env.local
+# Éditer .env.local avec vos clés Supabase
+
+# Lancer en développement
 npm run dev
 ```
 
-## 📱 Formats supportés
-- **Sortie** : MP4 (1080x1920) - Format TikTok/Instagram Reels
-- **Audio** : ElevenLabs IA, Upload MP3, ou Muet
-- **Images** : Automatique via Rentop ou upload manuel
+## Configuration Supabase
 
----
+### 1. Créer le bucket de stockage
 
-## Original Lovable Info
+Dans votre dashboard Supabase, aller à Storage et exécuter:
 
-**URL**: https://lovable.dev/projects/de781d46-5b2b-43dd-bb6b-511115353a70
+```sql
+-- Créer le bucket videos (public en lecture)
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('videos', 'videos', true);
 
-### Développement avec Lovable
-Visitez le [Lovable Project](https://lovable.dev/projects/de781d46-5b2b-43dd-bb6b-511115353a70) pour éditer via IA.
+-- Politique d'upload (authentification requise pour upload)
+CREATE POLICY "Allow authenticated uploads" ON storage.objects
+FOR INSERT WITH CHECK (
+  bucket_id = 'videos' AND
+  auth.role() = 'authenticated'
+);
+
+-- Politique de lecture publique
+CREATE POLICY "Allow public downloads" ON storage.objects
+FOR SELECT USING (bucket_id = 'videos');
+```
+
+### 2. Variables d'environnement
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=votre-cle-anon
+```
+
+## Déploiement Vercel
+
+### 1. Via GitHub
+
+1. Pusher votre code sur GitHub
+2. Aller sur [vercel.com](https://vercel.com)
+3. Cliquer "Add New Project"
+4. Sélectionner votre repository
+5. Ajouter les variables d'environnement:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+6. Déployer
+
+### 2. Via bouton de déploiement
+
+Cliquer sur le bouton "Deploy with Vercel" en haut de ce README.
+
+## Utilisation
+
+### Interface web
+
+1. Aller sur votre URL de déploiement
+2. Coller les URLs d'images (une par ligne)
+3. Optionnel: ajouter une URL audio MP3
+4. Optionnel: ajouter un titre
+5. Cliquer "Générer MP4"
+6. Télécharger la vidéo générée
+
+### API cURL
+
+```bash
+curl -X POST https://votre-app.vercel.app/encode \
+  -H "Content-Type: application/json" \
+  -d '{
+    "images": [
+      "https://picsum.photos/1080/1920?random=1",
+      "https://picsum.photos/1080/1920?random=2",
+      "https://picsum.photos/1080/1920?random=3"
+    ],
+    "title": "Test Video",
+    "fps": 30,
+    "durationPerImage": 2,
+    "width": 1080,
+    "height": 1920
+  }'
+```
+
+Réponse:
+```json
+{
+  "ok": true,
+  "url": "https://hlfozjnlhahdbnosltxl.supabase.co/storage/v1/object/public/videos/clips/1703123456789.mp4"
+}
+```
+
+## Limitations
+
+- **Durée recommandée**: 10-20 secondes (6-12 images max)
+- **Images**: minimum 2, maximum 30
+- **Audio**: MP3 seulement
+- **Timeout Vercel**: 5 minutes max pour l'encodage
+- **Taille fichier**: optimisé pour mobile (1080x1920)
+
+## Développement
+
+### Structure du projet
+
+```
+├── app/
+│   ├── encode/route.ts          # API d'encodage Node.js
+│   ├── page.tsx                 # Interface utilisateur
+│   ├── layout.tsx               # Layout principal
+│   └── globals.css              # Styles globaux
+├── lib/
+│   ├── ffmpeg.ts                # Logique FFmpeg
+│   ├── storage.ts               # Client Supabase
+│   └── validate.ts              # Validation Zod
+├── next.config.js               # Configuration Next.js
+├── vercel.json                  # Configuration Vercel
+└── tailwind.config.js           # Configuration Tailwind
+```
+
+### Scripts disponibles
+
+```bash
+npm run dev      # Développement local
+npm run build    # Build de production
+npm run start    # Serveur de production
+npm run lint     # Linting TypeScript
+```
+
+## Dépendances principales
+
+- `next` - Framework React
+- `fluent-ffmpeg` - Interface FFmpeg
+- `ffmpeg-static` - Binaire FFmpeg statique
+- `@supabase/supabase-js` - Client Supabase
+- `zod` - Validation des données
+- `tailwindcss` - Styles CSS
+
+## Support
+
+Pour les questions techniques:
+1. Vérifier les logs Vercel Functions
+2. Vérifier les logs Supabase Storage
+3. Tester l'API avec cURL
+4. Vérifier les permissions du bucket Supabase
+
+## Licence
+
+MIT
