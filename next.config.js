@@ -1,9 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  images: {
-    domains: ["rentop.co", "www.rentop.co", "picsum.photos"]
+  experimental: {
+    serverComponentsExternalPackages: ["fluent-ffmpeg", "ffmpeg-static"]
   }
 };
-
 module.exports = nextConfig;

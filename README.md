@@ -4,6 +4,38 @@ Générateur de vidéos MP4 avec encodage serveur Next.js et FFmpeg.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/YOUR_USERNAME/rentop-drive-clips&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
+## Configuration
+
+### Variables d'environnement Vercel
+- `NEXT_PUBLIC_SUPABASE_URL`: URL de votre projet Supabase
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Clé anonyme Supabase
+
+### Supabase Storage
+Créez un bucket public en lecture publique dans votre dashboard Supabase.
+
+## Développement local
+```bash
+npm run dev
+```
+
+## Déploiement Vercel
+1. Connectez votre repo GitHub à Vercel
+2. Ajoutez les variables d'environnement
+3. Déployez
+
+## Test API
+```bash
+curl -X POST https://votre-app.vercel.app/encode \
+  -H "Content-Type: application/json" \
+  -d '{
+    "images": [
+      "https://picsum.photos/1080/1920?random=1",
+      "https://picsum.photos/1080/1920?random=2",
+      "https://picsum.photos/1080/1920?random=3"
+    ]
+  }'
+```
+
 ## Fonctionnalités
 
 - ✅ Encodage vidéo MP4 côté serveur avec FFmpeg
