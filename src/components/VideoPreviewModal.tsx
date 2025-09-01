@@ -15,7 +15,7 @@ interface VideoPreviewModalProps {
   config?: {
     overlayText: string;
     voiceOverText: string;
-    audioSource: 'elevenlabs' | 'upload';
+    audioSource: 'elevenlabs' | 'upload' | 'none';
     uploadedAudio?: {
       file: File;
       duration: number;

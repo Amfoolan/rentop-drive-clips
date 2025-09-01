@@ -40,3 +40,9 @@ verify_jwt = false
 
 [functions.validate-user]
 verify_jwt = false
+
+[functions.shotstack-video]
+verify_jwt = false
+
+[functions.shotstack-status]
+verify_jwt = false

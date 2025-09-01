@@ -34,6 +34,8 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [renderId, setRenderId] = useState<string | null>(null);
+  const [videoDownloadUrl, setVideoDownloadUrl] = useState<string | null>(null);
 
   useEffect(() => {
     generateVideo();
@@ -44,22 +46,18 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
     setProgress(0);
     setAudioUrl(null);
     setAudioDuration(null);
+    setRenderId(null);
+    setVideoDownloadUrl(null);
 
     try {
-      // Import here to avoid bundle bloat
-      const { generateAudioWithElevenLabs } = await import('@/utils/audioGenerator');
-
-      setProgress(20);
-      toast({
-        title: "Génération de la vidéo",
-        description: "Préparation de l'aperçu vidéo avec audio..."
-      });
-
       let finalAudioUrl: string | undefined;
       let finalAudioDuration: number | undefined;
 
-      // Handle audio generation
+      // Handle audio generation based on audioSource
       if (config.audioSource === 'elevenlabs' && config.voiceOverText) {
+        // Import here to avoid bundle bloat
+        const { generateAudioWithElevenLabs } = await import('@/utils/audioGenerator');
+
         // Get API key for ElevenLabs
         const savedSettings = localStorage.getItem('rentop-api-settings');
         let apiKey = null;
@@ -72,7 +70,11 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
           throw new Error('Clé API ElevenLabs requise pour la génération audio');
         }
 
-        setProgress(30);
+        setProgress(10);
+        toast({
+          title: "Génération audio",
+          description: "Création de la voix-off avec ElevenLabs..."
+        });
         
         try {
           const audioResult = await generateAudioWithElevenLabs(
@@ -81,7 +83,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
             config.voiceSettings || {},
             apiKey,
             {
-              onProgress: (progress) => setProgress(30 + (progress * 0.6)), // 30-90%
+              onProgress: (progress) => setProgress(10 + (progress * 0.3)), // 10-40%
               onStatus: (status) => console.log('Audio status:', status)
             }
           );
@@ -92,10 +94,10 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
           setAudioDuration(finalAudioDuration);
           
         } catch (audioError) {
-          console.warn('Audio generation failed, proceeding without audio:', audioError);
+          console.warn('Audio generation failed:', audioError);
           toast({
-            title: "Audio non généré",
-            description: "Aperçu vidéo sans audio",
+            title: "Erreur audio",
+            description: "Impossible de générer l'audio, création vidéo muette",
             variant: "default"
           });
         }
@@ -105,36 +107,92 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
         finalAudioDuration = config.uploadedAudio.duration;
         setAudioUrl(finalAudioUrl);
         setAudioDuration(finalAudioDuration);
-        setProgress(70);
+        setProgress(40);
+      } else if (config.audioSource === 'none') {
+        // No audio mode
+        setProgress(40);
+        toast({
+          title: "Mode vidéo muette",
+          description: "Création d'une vidéo sans audio"
+        });
       }
 
-      setProgress(100);
-
-      // Save to database
-      const videoData = await saveVideo({
-        title: carData.title,
-        url: window.location.href,
-        car_data: carData,
-        overlay_text: config.overlayText,
-        voiceover_text: config.voiceOverText,
-        status: 'generated',
-        platforms: Object.entries(config.socialNetworks)
-          .filter(([_, enabled]) => enabled)
-          .map(([platform]) => platform),
-        stats: { views: 0, likes: 0, shares: 0 },
-        thumbnail_url: carData.images[0],
-        video_file_path: `videos/generated_${Date.now()}.mp4`
-      });
-
-      setVideoId(videoData.id);
-      setStatus('completed');
-
+      // Generate video with Shotstack
+      setProgress(50);
       toast({
-        title: "Aperçu vidéo généré avec succès !",
-        description: finalAudioUrl 
-          ? "Votre aperçu vidéo TikTok avec audio est prêt"
-          : "Votre aperçu vidéo TikTok est prêt"
+        title: "Génération vidéo",
+        description: "Envoi à Shotstack pour rendu professionnel..."
       });
+
+      const response = await supabase.functions.invoke('shotstack-video', {
+        body: {
+          carData,
+          config,
+          audioUrl: finalAudioUrl
+        }
+      });
+
+      if (response.error) {
+        throw new Error(`Erreur Shotstack: ${response.error.message}`);
+      }
+
+      const { renderId: newRenderId } = response.data;
+      setRenderId(newRenderId);
+      setProgress(60);
+
+      // Poll for render completion
+      const pollRenderStatus = async (): Promise<void> => {
+        const statusResponse = await supabase.functions.invoke('shotstack-status', {
+          body: { renderId: newRenderId }
+        });
+
+        if (statusResponse.error) {
+          throw new Error(`Erreur statut: ${statusResponse.error.message}`);
+        }
+
+        const { status: renderStatus, url, progress: renderProgress } = statusResponse.data;
+        
+        if (renderProgress !== undefined) {
+          setProgress(60 + (renderProgress * 0.4)); // Map 0-100% to 60-100%
+        }
+
+        if (renderStatus === 'done' && url) {
+          setVideoDownloadUrl(url);
+          setProgress(100);
+          
+          // Save to database
+          const videoData = await saveVideo({
+            title: carData.title,
+            url: url,
+            car_data: carData,
+            overlay_text: config.overlayText,
+            voiceover_text: config.voiceOverText,
+            status: 'generated',
+            platforms: Object.entries(config.socialNetworks)
+              .filter(([_, enabled]) => enabled)
+              .map(([platform]) => platform),
+            stats: { views: 0, likes: 0, shares: 0 },
+            thumbnail_url: carData.images[0],
+            video_file_path: url
+          });
+
+          setVideoId(videoData.id);
+          setStatus('completed');
+
+          toast({
+            title: "Vidéo générée avec succès !",
+            description: "Votre vidéo MP4 professionnelle est prête"
+          });
+          
+        } else if (renderStatus === 'failed') {
+          throw new Error('Échec du rendu Shotstack');
+        } else {
+          // Continue polling
+          setTimeout(pollRenderStatus, 3000); // Poll every 3 seconds
+        }
+      };
+
+      await pollRenderStatus();
 
     } catch (error) {
       console.error("Generation error:", error);
@@ -142,7 +200,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
       toast({
         variant: "destructive",
         title: "Erreur de génération",
-        description: "Une erreur s'est produite lors de la génération"
+        description: error instanceof Error ? error.message : "Une erreur s'est produite"
       });
     }
   };
@@ -152,59 +210,50 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
-    setIsDownloading(true);
-    setDownloadProgress(0);
-    setDownloadStatus('Initialisation de FFmpeg...');
-    
-    try {
+    if (!videoDownloadUrl) {
       toast({
-        title: "Génération vidéo MP4",
-        description: "Création professionnelle avec FFmpeg navigateur"
+        variant: "destructive",
+        title: "Erreur",
+        description: "Aucune vidéo disponible pour téléchargement"
+      });
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      toast({
+        title: "Téléchargement",
+        description: "Téléchargement de votre vidéo MP4 professionnelle..."
       });
 
-      // Use FFmpeg.wasm for professional MP4 video generation
-      const videoBlob = await generateVideoWithFFmpeg(
-        carData,
-        config,
-        audioUrl || undefined,
-        {
-          onProgress: (progress) => {
-            setDownloadProgress(progress);
-          },
-          onStatus: (status) => {
-            setDownloadStatus(status);
-          },
-          onToast: (title, description, variant) => {
-            toast({
-              title,
-              description,
-              variant: variant || 'default'
-            });
-          }
-        }
-      );
-
-      // Download the MP4 file
-      const url = URL.createObjectURL(videoBlob);
+      // Download the MP4 file directly from Shotstack
+      const response = await fetch(videoDownloadUrl);
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${carData.title.replace(/[^a-zA-Z0-9]/g, '_')}_TikTok.mp4`;
+      a.download = `${carData.title.replace(/[^a-zA-Z0-9]/g, '_')}_Shotstack.mp4`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      toast({
+        title: "Téléchargement réussi !",
+        description: "Votre vidéo MP4 a été téléchargée avec succès"
+      });
       
     } catch (error) {
       console.error('Download error:', error);
       toast({
         variant: "destructive",
-        title: "Erreur de génération",
-        description: `Impossible de générer la vidéo MP4: ${error.message}`
+        title: "Erreur de téléchargement",
+        description: error instanceof Error ? error.message : "Impossible de télécharger la vidéo"
       });
     } finally {
       setIsDownloading(false);
-      setDownloadStatus('');
-      setDownloadProgress(0);
     }
   };
 
@@ -279,11 +328,11 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                   </p>
                 </div>
                 
-                {/* Audio Configuration */}
-                {(audioUrl || config.audioSource === 'upload') && (
+                 {/* Audio Configuration */}
+                {(audioUrl || config.audioSource === 'upload' || config.audioSource === 'none') && (
                   <div className="bg-muted/20 rounded-lg p-4">
                     <h5 className="font-medium text-sm mb-2 flex items-center gap-2">
-                      🔊 Configuration audio
+                      {config.audioSource === 'none' ? '🔇' : '🔊'} Configuration audio
                     </h5>
                     <div className="space-y-2 text-sm">
                       {config.audioSource === 'elevenlabs' ? (
@@ -304,7 +353,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                             </div>
                           )}
                         </>
-                      ) : (
+                      ) : config.audioSource === 'upload' ? (
                         <>
                           <p className="text-muted-foreground">
                             <span className="font-medium">Source:</span> Fichier uploadé
@@ -320,6 +369,19 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                             <span className="text-xs text-blue-600 font-medium">Fichier audio prêt</span>
                           </div>
                         </>
+                      ) : (
+                        <>
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Source:</span> Aucun audio (vidéo muette)
+                          </p>
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Mode:</span> Vidéo silencieuse
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                            <span className="text-xs text-gray-600 font-medium">Mode muet activé</span>
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
@@ -331,6 +393,16 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                     <h5 className="font-medium text-sm mb-2">Script de la voix-off</h5>
                     <p className="text-sm text-muted-foreground bg-background rounded p-2 max-h-24 overflow-y-auto">
                       "{config.voiceOverText}"
+                    </p>
+                  </div>
+                )}
+
+                {/* No Audio Info */}
+                {config.audioSource === 'none' && (
+                  <div className="bg-muted/20 rounded-lg p-4">
+                    <h5 className="font-medium text-sm mb-2">Mode vidéo muette</h5>
+                    <p className="text-sm text-muted-foreground bg-background rounded p-2">
+                      Cette vidéo sera générée sans audio, uniquement avec les images et le texte d'overlay.
                     </p>
                   </div>
                 )}
@@ -373,8 +445,12 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                 <div>
                   <span className="text-muted-foreground">Audio:</span>
                   <span className="ml-2 font-medium">
-                    {audioUrl || config.audioSource === 'upload' 
-                      ? (config.audioSource === 'elevenlabs' ? 'ElevenLabs IA' : 'MP3 personnalisé')
+                    {config.audioSource === 'elevenlabs' && audioUrl 
+                      ? 'ElevenLabs IA'
+                      : config.audioSource === 'upload' && config.uploadedAudio
+                      ? 'MP3 personnalisé'
+                      : config.audioSource === 'none'
+                      ? 'Aucun (muet)'
                       : 'Aucun'
                     }
                   </span>
@@ -386,11 +462,21 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
               </div>
               
               {/* Audio Status Indicator */}
-              {(audioUrl || config.audioSource === 'upload') && (
+              {config.audioSource !== 'none' && (audioUrl || config.audioSource === 'upload') && (
                 <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-xs text-green-600 font-medium">
                     Vidéo avec audio synchronisé
+                  </span>
+                </div>
+              )}
+              
+              {/* Mute Status Indicator */}
+              {config.audioSource === 'none' && (
+                <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                  <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                  <span className="text-xs text-gray-600 font-medium">
+                    Vidéo muette (sans audio)
                   </span>
                 </div>
               )}
@@ -410,25 +496,13 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
               </div>
             </div>
 
-            {/* Download Progress */}
-            {isDownloading && (
-              <div className="bg-blue-50/50 border border-blue-200/50 rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                  <span className="font-medium text-blue-800">Téléchargement des ressources...</span>
-                </div>
-                <Progress value={downloadProgress} className="h-2" />
-                <p className="text-sm text-blue-700">
-                  {downloadStatus} - {Math.round(downloadProgress)}%
-                </p>
-              </div>
-            )}
+            {/* Download Progress - Remove since we don't need it for direct Shotstack download */}
 
             {/* Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                <Button 
                  onClick={handleDownload} 
-                 disabled={isDownloading}
+                 disabled={isDownloading || !videoDownloadUrl}
                  className="flex items-center gap-2" 
                  size="lg"
                >
@@ -440,7 +514,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                  ) : (
                    <>
                  <Download className="h-4 w-4" />
-                 Télécharger MP4
+                 Télécharger MP4 Shotstack
                    </>
                  )}
               </Button>

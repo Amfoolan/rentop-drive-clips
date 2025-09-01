@@ -28,7 +28,7 @@ export interface CarData {
 export interface VideoConfig {
   overlayText: string;
   voiceOverText: string;
-  audioSource: 'elevenlabs' | 'upload';
+  audioSource: 'elevenlabs' | 'upload' | 'none';
   uploadedAudio?: {
     file: File;
     duration: number;

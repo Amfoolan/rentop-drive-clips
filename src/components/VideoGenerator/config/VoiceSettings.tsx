@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mic, Play, Pause, Volume2, Upload } from "lucide-react";
+import { Mic, Play, Pause, Volume2, Upload, VolumeX } from "lucide-react";
 import { useState } from "react";
 import { VideoConfig } from "../StepByStepGenerator";
 import { supabase } from "@/integrations/supabase/client";
@@ -138,8 +138,8 @@ export function VoiceSettings({ config, onConfigChange }: VoiceSettingsProps) {
 
   return (
     <div className="space-y-6">
-      <Tabs value={config.audioSource} onValueChange={(value) => onConfigChange({ ...config, audioSource: value as 'elevenlabs' | 'upload' })} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs value={config.audioSource} onValueChange={(value) => onConfigChange({ ...config, audioSource: value as 'elevenlabs' | 'upload' | 'none' })} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="elevenlabs" className="flex items-center gap-2">
             <Mic className="h-4 w-4" />
             ElevenLabs (AI)
@@ -147,6 +147,10 @@ export function VoiceSettings({ config, onConfigChange }: VoiceSettingsProps) {
           <TabsTrigger value="upload" className="flex items-center gap-2">
             <Upload className="h-4 w-4" />
             Upload MP3
+          </TabsTrigger>
+          <TabsTrigger value="none" className="flex items-center gap-2">
+            <VolumeX className="h-4 w-4" />
+            Sans Audio
           </TabsTrigger>
         </TabsList>
 
@@ -293,6 +297,38 @@ export function VoiceSettings({ config, onConfigChange }: VoiceSettingsProps) {
             config={config}
             onConfigChange={onConfigChange}
           />
+        </TabsContent>
+
+        <TabsContent value="none">
+          <Card className="bg-muted/20 border-muted">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <VolumeX className="h-4 w-4" />
+                Vidéo Muette
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-accent/10 rounded-lg p-4 border border-accent/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <VolumeX className="h-4 w-4 text-accent" />
+                  <span className="font-medium text-accent">Mode silencieux</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  La vidéo sera générée sans audio. Seules les images et le texte overlay seront inclus.
+                </p>
+              </div>
+
+              {/* Preview du texte overlay */}
+              <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-medium text-primary">Aperçu du texte overlay</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {config.overlayText || "Aucun texte overlay configuré"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
