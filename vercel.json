@@ -1,19 +1,13 @@
 {
-  "functions": {
-    "supabase/functions/*/index.ts": {
-      "runtime": "nodejs18.x"
-    }
-  },
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/supabase/functions/$1"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
-  ],
-  "build": {
-    "env": {
-      "VITE_SUPABASE_URL": "@supabase_url",
-      "VITE_SUPABASE_ANON_KEY": "@supabase_anon_key"
-    }
-  }
+  ]
 }
