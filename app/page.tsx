@@ -27,7 +27,7 @@ export default function Page() {
         height: 1920,
       };
 
-      // 👉 Appel direct à la route Vercel (PAS d’Edge Function / PAS de WebM client)
+      // Appel direct à la route Vercel (MP4 côté serveur)
       const res = await fetch("/encode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
