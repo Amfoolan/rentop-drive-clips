@@ -34,7 +34,6 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
   const [videoDownloadUrl, setVideoDownloadUrl] = useState<string | null>(null);
-  const [generationMethod, setGenerationMethod] = useState<'server' | 'shotstack'>('server');
 
   useEffect(() => {
     generateVideo();
@@ -112,86 +111,20 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
         });
       }
 
-      // Generate video with server encoder (default) or Shotstack (settings)
+      // Generate video preview data
       setProgress(50);
-      
-      if (generationMethod === 'server') {
-        toast({
-          title: "Encodage serveur",
-          description: "Génération optimisée côté serveur..."
-        });
+      toast({
+        title: "Préparation vidéo",
+        description: "Génération de votre vidéo TikTok..."
+      });
 
-        const response = await supabase.functions.invoke('video-encoder', {
-          body: {
-            carData,
-            config,
-            audioUrl: finalAudioUrl
-          }
-        });
-
-        if (response.error) {
-          throw new Error(`Erreur encodage: ${response.error.message}`);
-        }
-
-        const { videoUrl } = response.data;
-        setVideoDownloadUrl(videoUrl);
-        setProgress(100);
-        
-      } else {
-        // Shotstack fallback (requires settings)
-        toast({
-          title: "Rendu Shotstack",
-          description: "Génération professionnelle avec Shotstack..."
-        });
-
-        const response = await supabase.functions.invoke('shotstack-video', {
-          body: {
-            carData,
-            config,
-            audioUrl: finalAudioUrl
-          }
-        });
-
-        if (response.error) {
-          throw new Error(`Erreur Shotstack: ${response.error.message}`);
-        }
-
-        const { renderId } = response.data;
-        setProgress(60);
-
-        // Poll for completion
-        const pollStatus = async (): Promise<void> => {
-          const statusResponse = await supabase.functions.invoke('shotstack-status', {
-            body: { renderId }
-          });
-
-          if (statusResponse.error) {
-            throw new Error(`Erreur statut: ${statusResponse.error.message}`);
-          }
-
-          const { status: renderStatus, url, progress: renderProgress } = statusResponse.data;
-          
-          if (renderProgress !== undefined) {
-            setProgress(60 + (renderProgress * 0.4));
-          }
-
-          if (renderStatus === 'done' && url) {
-            setVideoDownloadUrl(url);
-            setProgress(100);
-          } else if (renderStatus === 'failed') {
-            throw new Error('Échec du rendu Shotstack');
-          } else {
-            setTimeout(pollStatus, 3000);
-          }
-        };
-
-        await pollStatus();
-      }
+      setVideoDownloadUrl("client-generated"); // Mark as ready for client download
+      setProgress(100);
 
       // Save to database
-      const videoData = await saveVideo({
+      const savedVideoData = await saveVideo({
         title: carData.title,
-        url: videoDownloadUrl || '',
+        url: '',
         car_data: carData,
         overlay_text: config.overlayText,
         voiceover_text: config.voiceOverText,
@@ -201,15 +134,15 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
           .map(([platform]) => platform),
         stats: { views: 0, likes: 0, shares: 0 },
         thumbnail_url: carData.images[0],
-        video_file_path: videoDownloadUrl || ''
+        video_file_path: ''
       });
 
-      setVideoId(videoData.id);
+      setVideoId(savedVideoData.id);
       setStatus('completed');
 
       toast({
         title: "✅ Vidéo générée !",
-        description: `Votre vidéo ${generationMethod === 'server' ? 'optimisée' : 'professionnelle'} est prête`
+        description: "Votre vidéo TikTok est prête pour téléchargement"
       });
 
     } catch (error) {
@@ -240,27 +173,43 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
     try {
       setIsDownloading(true);
       toast({
-        title: "Téléchargement",
-        description: "Téléchargement de votre vidéo MP4 professionnelle..."
+        title: "Génération vidéo",
+        description: "Création de votre fichier MP4..."
       });
 
-      // Download the MP4 file directly from Shotstack
-      const response = await fetch(videoDownloadUrl);
-      const blob = await response.blob();
+      // Use VideoDownloader to generate and download the video
+      const { VideoDownloader } = await import("@/components/VideoGenerator/VideoDownloader");
       
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${carData.title.replace(/[^a-zA-Z0-9]/g, '_')}_Shotstack.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const generatedVideo = {
+        id: videoId || 'preview',
+        title: carData.title,
+        url: '',
+        user_id: '',
+        car_data: carData,
+        overlay_text: config.overlayText,
+        voiceover_text: config.voiceOverText,
+        thumbnail_url: carData.images[0],
+        video_file_path: '',
+        status: 'generated' as const,
+        platforms: Object.entries(config.socialNetworks)
+          .filter(([_, enabled]) => enabled)
+          .map(([platform]) => platform),
+        stats: { likes: 0, views: 0, shares: 0 },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const extendedConfig = {
+        ...config,
+        audioUrl: audioUrl,
+        audioDuration: audioDuration
+      };
+
+      await VideoDownloader.downloadVideo(generatedVideo, extendedConfig);
 
       toast({
         title: "Téléchargement réussi !",
-        description: "Votre vidéo MP4 a été téléchargée avec succès"
+        description: "Votre vidéo MP4 a été téléchargée sur votre Mac"
       });
       
     } catch (error) {
@@ -278,26 +227,9 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   return (
     <Card className="glass-card border-0">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Play className="h-5 w-5" />
-            Étape 5: Génération de votre vidéo
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant={generationMethod === 'server' ? 'default' : 'secondary'}>
-              {generationMethod === 'server' ? '⚡ Encodeur serveur' : '🎬 Shotstack Pro'}
-            </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setGenerationMethod(generationMethod === 'server' ? 'shotstack' : 'server')}
-              disabled={status === 'generating'}
-              className="flex items-center gap-1"
-            >
-              <Settings className="h-3 w-3" />
-              Changer
-            </Button>
-          </div>
+        <CardTitle className="flex items-center gap-2">
+          <Play className="h-5 w-5" />
+          Étape 5: Génération de votre vidéo
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -308,9 +240,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
               <div>
                 <h3 className="text-lg font-semibold">Génération en cours...</h3>
                 <p className="text-muted-foreground">
-                  {generationMethod === 'server' 
-                    ? 'Encodage optimisé côté serveur - Rapide et fiable' 
-                    : 'Rendu professionnel Shotstack - Qualité cinéma'}
+                  Préparation de votre vidéo TikTok personnalisée
                 </p>
               </div>
               
@@ -561,8 +491,8 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                    </>
                  ) : (
                    <>
-                 <Download className="h-4 w-4" />
-                 Télécharger MP4 Shotstack
+                  <Download className="h-4 w-4" />
+                  Télécharger MP4
                    </>
                  )}
               </Button>
@@ -581,9 +511,9 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
                 <div className="flex items-start gap-2">
                   <Download className="h-4 w-4 text-blue-600 mt-0.5" />
                   <div className="text-sm">
-                     <p className="font-medium text-blue-800">Génération FFmpeg navigateur</p>
+                     <p className="font-medium text-blue-800">Téléchargement direct</p>
                      <p className="text-blue-700 mt-1">
-                       MP4 H.264 1080x1920 (9:16) - Qualité professionnelle pour réseaux sociaux
+                       Format MP4 optimisé pour TikTok (1080×1920)
                      </p>
                     <p className="text-blue-600 text-xs mt-1">
                       • Audio : {config.audioSource === 'elevenlabs' ? 'ElevenLabs IA ✓' : config.audioSource === 'upload' ? 'Audio personnalisé ✓' : 'Aucun ✗'}
