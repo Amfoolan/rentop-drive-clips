@@ -31,7 +31,7 @@ serve(async (req) => {
     const statusResponse = await fetch(`${SHOTSTACK_BASE_URL}/render/${renderId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${SHOTSTACK_API_KEY}`,
+        'x-api-key': SHOTSTACK_API_KEY,
         'Content-Type': 'application/json',
       }
     });

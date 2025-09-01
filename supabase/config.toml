@@ -41,6 +41,9 @@ verify_jwt = false
 [functions.validate-user]
 verify_jwt = false
 
+[functions.video-encoder]
+verify_jwt = false
+
 [functions.shotstack-video]
 verify_jwt = false
 

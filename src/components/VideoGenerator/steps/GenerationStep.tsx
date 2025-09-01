@@ -9,14 +9,14 @@ import {
   Share2, 
   CheckCircle, 
   Loader2,
-  RotateCcw 
+  RotateCcw,
+  Settings 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGeneratedVideos } from "@/hooks/useGeneratedVideos";
 import { CarData, VideoConfig } from "../StepByStepGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { VideoPreview } from "@/components/VideoPreview";
-import { generateVideoWithFFmpeg } from "@/utils/videoGenerator";
 
 
 interface GenerationStepProps {
@@ -33,9 +33,8 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   const [videoId, setVideoId] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [renderId, setRenderId] = useState<string | null>(null);
   const [videoDownloadUrl, setVideoDownloadUrl] = useState<string | null>(null);
+  const [generationMethod, setGenerationMethod] = useState<'server' | 'shotstack'>('server');
 
   useEffect(() => {
     generateVideo();
@@ -46,7 +45,6 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
     setProgress(0);
     setAudioUrl(null);
     setAudioDuration(null);
-    setRenderId(null);
     setVideoDownloadUrl(null);
 
     try {
@@ -55,10 +53,8 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
 
       // Handle audio generation based on audioSource
       if (config.audioSource === 'elevenlabs' && config.voiceOverText) {
-        // Import here to avoid bundle bloat
         const { generateAudioWithElevenLabs } = await import('@/utils/audioGenerator');
 
-        // Get API key for ElevenLabs
         const savedSettings = localStorage.getItem('rentop-api-settings');
         let apiKey = null;
         if (savedSettings) {
@@ -70,9 +66,9 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
           throw new Error('Clé API ElevenLabs requise pour la génération audio');
         }
 
-        setProgress(10);
+        setProgress(15);
         toast({
-          title: "Génération audio",
+          title: "Génération audio IA",
           description: "Création de la voix-off avec ElevenLabs..."
         });
         
@@ -83,7 +79,7 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
             config.voiceSettings || {},
             apiKey,
             {
-              onProgress: (progress) => setProgress(10 + (progress * 0.3)), // 10-40%
+              onProgress: (progress) => setProgress(15 + (progress * 0.25)), // 15-40%
               onStatus: (status) => console.log('Audio status:', status)
             }
           );
@@ -96,8 +92,8 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
         } catch (audioError) {
           console.warn('Audio generation failed:', audioError);
           toast({
-            title: "Erreur audio",
-            description: "Impossible de générer l'audio, création vidéo muette",
+            title: "Info",
+            description: "Génération sans audio suite à une erreur",
             variant: "default"
           });
         }
@@ -109,90 +105,112 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
         setAudioDuration(finalAudioDuration);
         setProgress(40);
       } else if (config.audioSource === 'none') {
-        // No audio mode
         setProgress(40);
         toast({
-          title: "Mode vidéo muette",
-          description: "Création d'une vidéo sans audio"
+          title: "Mode silencieux",
+          description: "Génération d'une vidéo muette"
         });
       }
 
-      // Generate video with Shotstack
+      // Generate video with server encoder (default) or Shotstack (settings)
       setProgress(50);
-      toast({
-        title: "Génération vidéo",
-        description: "Envoi à Shotstack pour rendu professionnel..."
-      });
-
-      const response = await supabase.functions.invoke('shotstack-video', {
-        body: {
-          carData,
-          config,
-          audioUrl: finalAudioUrl
-        }
-      });
-
-      if (response.error) {
-        throw new Error(`Erreur Shotstack: ${response.error.message}`);
-      }
-
-      const { renderId: newRenderId } = response.data;
-      setRenderId(newRenderId);
-      setProgress(60);
-
-      // Poll for render completion
-      const pollRenderStatus = async (): Promise<void> => {
-        const statusResponse = await supabase.functions.invoke('shotstack-status', {
-          body: { renderId: newRenderId }
+      
+      if (generationMethod === 'server') {
+        toast({
+          title: "Encodage serveur",
+          description: "Génération optimisée côté serveur..."
         });
 
-        if (statusResponse.error) {
-          throw new Error(`Erreur statut: ${statusResponse.error.message}`);
+        const response = await supabase.functions.invoke('video-encoder', {
+          body: {
+            carData,
+            config,
+            audioUrl: finalAudioUrl
+          }
+        });
+
+        if (response.error) {
+          throw new Error(`Erreur encodage: ${response.error.message}`);
         }
 
-        const { status: renderStatus, url, progress: renderProgress } = statusResponse.data;
+        const { videoUrl } = response.data;
+        setVideoDownloadUrl(videoUrl);
+        setProgress(100);
         
-        if (renderProgress !== undefined) {
-          setProgress(60 + (renderProgress * 0.4)); // Map 0-100% to 60-100%
+      } else {
+        // Shotstack fallback (requires settings)
+        toast({
+          title: "Rendu Shotstack",
+          description: "Génération professionnelle avec Shotstack..."
+        });
+
+        const response = await supabase.functions.invoke('shotstack-video', {
+          body: {
+            carData,
+            config,
+            audioUrl: finalAudioUrl
+          }
+        });
+
+        if (response.error) {
+          throw new Error(`Erreur Shotstack: ${response.error.message}`);
         }
 
-        if (renderStatus === 'done' && url) {
-          setVideoDownloadUrl(url);
-          setProgress(100);
-          
-          // Save to database
-          const videoData = await saveVideo({
-            title: carData.title,
-            url: url,
-            car_data: carData,
-            overlay_text: config.overlayText,
-            voiceover_text: config.voiceOverText,
-            status: 'generated',
-            platforms: Object.entries(config.socialNetworks)
-              .filter(([_, enabled]) => enabled)
-              .map(([platform]) => platform),
-            stats: { views: 0, likes: 0, shares: 0 },
-            thumbnail_url: carData.images[0],
-            video_file_path: url
+        const { renderId } = response.data;
+        setProgress(60);
+
+        // Poll for completion
+        const pollStatus = async (): Promise<void> => {
+          const statusResponse = await supabase.functions.invoke('shotstack-status', {
+            body: { renderId }
           });
 
-          setVideoId(videoData.id);
-          setStatus('completed');
+          if (statusResponse.error) {
+            throw new Error(`Erreur statut: ${statusResponse.error.message}`);
+          }
 
-          toast({
-            title: "Vidéo générée avec succès !",
-            description: "Votre vidéo MP4 professionnelle est prête"
-          });
+          const { status: renderStatus, url, progress: renderProgress } = statusResponse.data;
           
-        } else if (renderStatus === 'failed') {
-          throw new Error('Échec du rendu Shotstack');
-        } else {
-          // Continue polling
-          setTimeout(pollRenderStatus, 3000); // Poll every 3 seconds
-        }
-      };
+          if (renderProgress !== undefined) {
+            setProgress(60 + (renderProgress * 0.4));
+          }
 
-      await pollRenderStatus();
+          if (renderStatus === 'done' && url) {
+            setVideoDownloadUrl(url);
+            setProgress(100);
+          } else if (renderStatus === 'failed') {
+            throw new Error('Échec du rendu Shotstack');
+          } else {
+            setTimeout(pollStatus, 3000);
+          }
+        };
+
+        await pollStatus();
+      }
+
+      // Save to database
+      const videoData = await saveVideo({
+        title: carData.title,
+        url: videoDownloadUrl || '',
+        car_data: carData,
+        overlay_text: config.overlayText,
+        voiceover_text: config.voiceOverText,
+        status: 'generated',
+        platforms: Object.entries(config.socialNetworks)
+          .filter(([_, enabled]) => enabled)
+          .map(([platform]) => platform),
+        stats: { views: 0, likes: 0, shares: 0 },
+        thumbnail_url: carData.images[0],
+        video_file_path: videoDownloadUrl || ''
+      });
+
+      setVideoId(videoData.id);
+      setStatus('completed');
+
+      toast({
+        title: "✅ Vidéo générée !",
+        description: `Votre vidéo ${generationMethod === 'server' ? 'optimisée' : 'professionnelle'} est prête`
+      });
 
     } catch (error) {
       console.error("Generation error:", error);
@@ -260,20 +278,50 @@ export function GenerationStep({ carData, config, onComplete }: GenerationStepPr
   return (
     <Card className="glass-card border-0">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Play className="h-5 w-5" />
-          Étape 4: Génération de votre vidéo
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Play className="h-5 w-5" />
+            Étape 5: Génération de votre vidéo
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={generationMethod === 'server' ? 'default' : 'secondary'}>
+              {generationMethod === 'server' ? '⚡ Encodeur serveur' : '🎬 Shotstack Pro'}
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setGenerationMethod(generationMethod === 'server' ? 'shotstack' : 'server')}
+              disabled={status === 'generating'}
+              className="flex items-center gap-1"
+            >
+              <Settings className="h-3 w-3" />
+              Changer
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {status === 'generating' && (
           <div className="space-y-4">
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-4">
               <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
-              <h3 className="text-lg font-semibold">Génération en cours...</h3>
-              <p className="text-muted-foreground">
-                Votre vidéo TikTok est en cours de création avec IA
-              </p>
+              <div>
+                <h3 className="text-lg font-semibold">Génération en cours...</h3>
+                <p className="text-muted-foreground">
+                  {generationMethod === 'server' 
+                    ? 'Encodage optimisé côté serveur - Rapide et fiable' 
+                    : 'Rendu professionnel Shotstack - Qualité cinéma'}
+                </p>
+              </div>
+              
+              <div className="bg-muted/20 rounded-lg p-3">
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  {progress < 20 && '🎤 Génération audio...'}
+                  {progress >= 20 && progress < 50 && '🖼️ Traitement des images...'}
+                  {progress >= 50 && progress < 90 && '🎬 Assemblage vidéo...'}
+                  {progress >= 90 && '✨ Finalisation...'}
+                </div>
+              </div>
             </div>
             
             <Progress value={progress} className="h-3" />

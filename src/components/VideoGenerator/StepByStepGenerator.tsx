@@ -54,9 +54,9 @@ export interface VideoConfig {
 const steps = [
   { id: 1, title: "URL Rentop", description: "Coller le lien de la voiture" },
   { id: 2, title: "Aperçu", description: "Vérifier les données extraites" },
-  { id: 3, title: "Configuration", description: "Textes et paramètres voix" },
+  { id: 3, title: "Configuration", description: "Textes et paramètres audio" },
   { id: 4, title: "Prévisualisation", description: "Aperçu final avant génération" },
-  { id: 5, title: "Génération", description: "Créer la vidéo TikTok" }
+  { id: 5, title: "Génération", description: "Créer votre vidéo professionnelle" }
 ];
 
 export function StepByStepGenerator() {
@@ -228,11 +228,11 @@ export function StepByStepGenerator() {
         </Button>
         
         <div className="text-center text-sm text-muted-foreground">
-          {currentStep === 1 && "Commencez par coller un lien Rentop"}
-          {currentStep === 2 && "Vérifiez les informations extraites"}
-          {currentStep === 3 && "Configurez votre vidéo"}
-          {currentStep === 4 && "Prévisualisez votre vidéo finale"}
-          {currentStep === 5 && "Votre vidéo est en cours de création"}
+          {currentStep === 1 && "🔗 Commencez par coller un lien Rentop"}
+          {currentStep === 2 && "👀 Vérifiez les informations extraites"}
+          {currentStep === 3 && "⚙️ Configurez audio et textes"}
+          {currentStep === 4 && "👁️ Prévisualisez votre vidéo finale"}
+          {currentStep === 5 && "🎬 Génération en cours - Patientez..."}
         </div>
         
         <div className="w-24" /> {/* Spacer for centering */}

@@ -189,7 +189,7 @@ serve(async (req) => {
     const renderResponse = await fetch(`${SHOTSTACK_BASE_URL}/render`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${SHOTSTACK_API_KEY}`,
+        'x-api-key': SHOTSTACK_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(renderRequest)

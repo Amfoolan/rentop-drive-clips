@@ -15,7 +15,8 @@ import {
   CheckCircle,
   AlertCircle,
   ExternalLink,
-  Save
+  Save,
+  Video
 } from "lucide-react";
 
 interface ApiSettings {
@@ -223,14 +224,15 @@ export function Settings() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <SettingsIcon className="h-5 w-5" />
-            Paramètres API et Connexions
+            Paramètres API et Configurations
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="elevenlabs" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="elevenlabs">ElevenLabs</TabsTrigger>
               <TabsTrigger value="social">Réseaux Sociaux</TabsTrigger>
+              <TabsTrigger value="video">Génération Vidéo</TabsTrigger>
             </TabsList>
 
             <TabsContent value="elevenlabs" className="space-y-6">
@@ -387,6 +389,56 @@ export function Settings() {
                     </Card>
                   );
                 })}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="video" className="space-y-6">
+              <div className="space-y-6">
+                <Card className="border border-border/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Video className="h-5 w-5" />
+                      Méthodes de génération vidéo
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-4">
+                      <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          <span className="font-medium text-green-800">⚡ Encodeur Serveur (Recommandé)</span>
+                        </div>
+                        <p className="text-sm text-green-700">
+                          Génération rapide et fiable côté serveur. Méthode par défaut optimisée pour la performance.
+                        </p>
+                        <div className="mt-2 text-xs text-green-600">
+                          ✓ Rapide • ✓ Stable • ✓ Gratuit • ✓ Qualité professionnelle
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                          <span className="font-medium text-blue-800">🎬 Shotstack Pro (Optionnel)</span>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          Rendu cloud professionnel avec effets avancés. Nécessite une clé API Shotstack.
+                        </p>
+                        <div className="mt-2 text-xs text-blue-600">
+                          ✓ Qualité cinéma • ✓ Effets avancés • ⚠️ Payant • ⚠️ Plus lent
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-muted/50 p-4 rounded-lg">
+                      <h4 className="font-medium text-sm mb-2">💡 Recommandation</h4>
+                      <p className="text-sm text-muted-foreground">
+                        L'encodeur serveur est suffisant pour 99% des cas d'usage. 
+                        Shotstack n'est nécessaire que pour des besoins très spécifiques de qualité cinéma.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
           </Tabs>
