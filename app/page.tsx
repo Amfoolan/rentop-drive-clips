@@ -7,12 +7,15 @@ export default function Page() {
   const [title, setTitle] = useState("Lamborghini Huracan 2024");
   const [fps, setFps] = useState(30);
   const [dur, setDur] = useState(2);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null); // MP4 serveur
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function generate() {
-    setLoading(true); setErr(null); setVideoUrl(null);
+    setLoading(true);
+    setErr(null);
+    setVideoUrl(null);
+
     try {
       const payload = {
         images: images.split("\n").map(s => s.trim()).filter(Boolean),
@@ -21,19 +24,25 @@ export default function Page() {
         fps,
         durationPerImage: dur,
         width: 1080,
-        height: 1920
+        height: 1920,
       };
-      // 👉 Appel direct à ta route Vercel (PAS d’Edge Function Supabase)
+
+      // 👉 Appel direct à la route Vercel (PAS d’Edge Function / PAS de WebM client)
       const res = await fetch("/encode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
+
       const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || `encode failed (${res.status})`);
-      setVideoUrl(json.url);
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || `encode failed (${res.status})`);
+      }
+
+      // URL publique Supabase du MP4 encodé côté serveur
+      setVideoUrl(json.url as string);
     } catch (e: any) {
-      setErr(e.message);
+      setErr(e.message || "Erreur inconnue");
     } finally {
       setLoading(false);
     }
@@ -42,43 +51,96 @@ export default function Page() {
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-4">
       <h1 className="text-2xl font-semibold">Rentop Video Creator</h1>
+      <p className="text-sm opacity-70">Génération MP4 serveur (H.264/AAC, 1080×1920, 30 fps)</p>
 
       <label className="block font-medium">Images URLs (une par ligne)</label>
-      <textarea className="w-full border rounded p-2 h-36"
+      <textarea
+        className="w-full border rounded p-2 h-36"
         placeholder={"https://picsum.photos/seed/1/1080/1920\nhttps://picsum.photos/seed/2/1080/1920\nhttps://picsum.photos/seed/3/1080/1920"}
-        value={images} onChange={e=>setImages(e.target.value)} />
+        value={images}
+        onChange={(e) => setImages(e.target.value)}
+      />
 
       <label className="block font-medium">Audio MP3 (optionnel)</label>
-      <input className="w-full border rounded p-2" value={audio} onChange={e=>setAudio(e.target.value)} placeholder="https://exemple.com/music.mp3" />
+      <input
+        className="w-full border rounded p-2"
+        placeholder="https://exemple.com/music.mp3"
+        value={audio}
+        onChange={(e) => setAudio(e.target.value)}
+      />
 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block font-medium">Titre overlay (optionnel)</label>
-          <input className="w-full border rounded p-2" value={title} onChange={e=>setTitle(e.target.value)} />
+          <input
+            className="w-full border rounded p-2"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </div>
         <div className="flex items-end gap-3">
           <div>
             <label className="block font-medium">FPS</label>
-            <input type="number" className="w-24 border rounded p-2" min={24} max={60} value={fps} onChange={e=>setFps(Number(e.target.value))} />
+            <input
+              type="number"
+              min={24}
+              max={60}
+              className="w-24 border rounded p-2"
+              value={fps}
+              onChange={(e) => setFps(Number(e.target.value))}
+            />
           </div>
           <div>
             <label className="block font-medium">Durée / image (s)</label>
-            <input type="number" className="w-28 border rounded p-2" min={1} max={5} value={dur} onChange={e=>setDur(Number(e.target.value))} />
+            <input
+              type="number"
+              min={1}
+              max={5}
+              className="w-28 border rounded p-2"
+              value={dur}
+              onChange={(e) => setDur(Number(e.target.value))}
+            />
           </div>
         </div>
       </div>
 
-      <button onClick={generate} disabled={loading}
-        className="bg-black text-white px-4 py-2 rounded">
-        {loading ? "Encodage..." : "Générer MP4 Serveur"}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={generate}
+          disabled={loading}
+          className="bg-black text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          {loading ? "Encodage..." : "Générer MP4 Serveur"}
+        </button>
+
+        {/* Lien de téléchargement du MP4 côté serveur */}
+        <a
+          href={videoUrl ?? undefined}
+          download={videoUrl ? "rentop-clip.mp4" : undefined}
+          className={`px-4 py-2 rounded border ${videoUrl ? "hover:bg-gray-50" : "opacity-50 pointer-events-none"}`}
+        >
+          Télécharger MP4
+        </a>
+
+        {/* Lien d’ouverture dans un nouvel onglet (utile sur mobile) */}
+        {videoUrl && (
+          <a
+            href={videoUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            Ouvrir le MP4
+          </a>
+        )}
+      </div>
 
       {err && <p className="text-red-600">{err}</p>}
 
       {videoUrl && (
         <section className="space-y-2">
           <video src={videoUrl} controls className="w-full rounded border" />
-          <a href={videoUrl} download className="underline">Télécharger MP4</a>
+          <p className="text-xs opacity-70 break-all">{videoUrl}</p>
         </section>
       )}
     </main>
