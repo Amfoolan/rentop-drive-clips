@@ -33,11 +33,11 @@ export async function POST(req: NextRequest) {
 
     const work = await mkdtemp(join(tmpdir(), "encode-"));
     try {
-      const localImages: string[] = [];
+      const locals: string[] = [];
       for (let i = 0; i < images.length; i++) {
         const p = join(work, `img_${String(i).padStart(4, "0")}.jpg`);
         await downloadTo(p, images[i]);
-        localImages.push(p);
+        locals.push(p);
       }
 
       let audioPath: string | undefined;
@@ -46,15 +46,13 @@ export async function POST(req: NextRequest) {
         await downloadTo(audioPath, audio);
       }
 
-      const listTxt = localImages
-        .map(p => `file '${p}'\nduration ${durationPerImage}`)
-        .join("\n") + `\nfile '${localImages[localImages.length - 1]}'`;
-
+      const listTxt =
+        locals.map(p => `file '${p}'\nduration ${durationPerImage}`).join("\n") +
+        `\nfile '${locals[locals.length - 1]}'`;
       const listPath = join(work, "list.txt");
       await writeFile(listPath, listTxt);
 
       const outPath = join(work, "out.mp4");
-
       await new Promise<void>((resolve, reject) => {
         let cmd = ffmpeg()
           .input(listPath)
