@@ -19,31 +19,33 @@ export function AuthComponent() {
     e.preventDefault();
     setLoading(true);
 
-    // Liste des emails autorisés
-    const allowedEmails = ['rentop.co.ae@gmail.com', 'amine.ready@gmail.com'];
-    
-    if (!allowedEmails.includes(email.toLowerCase())) {
-      toast({
-        variant: "destructive",
-        title: "Accès refusé",
-        description: "Cette application est privée. Seuls les utilisateurs autorisés peuvent se connecter.",
-      });
-      setLoading(false);
-      return;
-    }
-
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
-
-      toast({
-        title: "Connexion réussie",
-        description: "Bienvenue dans Rentop Video Creator !",
-      });
+      if (error) {
+        // Handle specific error cases for better UX
+        if (error.message.includes('Invalid login credentials')) {
+          toast({
+            variant: "destructive",
+            title: "Erreur de connexion",
+            description: "Email ou mot de passe incorrect.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Erreur de connexion",
+            description: error.message || "Impossible de se connecter",
+          });
+        }
+      } else {
+        toast({
+          title: "Connexion réussie",
+          description: "Bienvenue dans Rentop Video Creator !",
+        });
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -58,37 +60,49 @@ export function AuthComponent() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    // Liste des emails autorisés
-    const allowedEmails = ['rentop.co.ae@gmail.com', 'amine.ready@gmail.com'];
     
-    if (!allowedEmails.includes(email.toLowerCase())) {
-      toast({
-        variant: "destructive",
-        title: "Accès refusé",
-        description: "Cette application est privée. Contactez l'administrateur pour obtenir l'accès.",
-      });
-      setLoading(false);
-      return;
-    }
-
     try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`
+        }
       });
 
-      if (error) throw error;
-
-      toast({
-        title: "Compte créé",
-        description: "Vérifiez votre email pour confirmer votre compte",
-      });
+      if (error) {
+        // Handle specific error cases
+        if (error.message.includes('Email') && error.message.includes('not authorized')) {
+          toast({
+            variant: "destructive",
+            title: "Accès refusé",
+            description: "Cette application est privée. Contactez l'administrateur pour obtenir l'accès.",
+          });
+        } else if (error.message.includes('check_violation')) {
+          toast({
+            variant: "destructive", 
+            title: "Accès refusé",
+            description: "Cette application est privée. Contactez l'administrateur pour obtenir l'accès.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Erreur lors de l'inscription",
+            description: error.message || "Une erreur est survenue.",
+          });
+        }
+      } else {
+        toast({
+          title: "Inscription réussie",
+          description: "Vérifiez votre email pour confirmer votre compte.",
+        });
+      }
     } catch (error: any) {
+      console.error('Signup error:', error);
       toast({
         variant: "destructive",
-        title: "Erreur d'inscription",
-        description: error.message || "Impossible de créer le compte",
+        title: "Erreur lors de l'inscription",
+        description: error.message || "Une erreur est survenue.",
       });
     } finally {
       setLoading(false);
