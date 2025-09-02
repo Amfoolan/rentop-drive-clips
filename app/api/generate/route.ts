@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { images, audio, title, fps, duration } = await req.json();
+    const { images, audio, title, fps, durationPerImage } = await req.json();
 
     if (!images || !Array.isArray(images) || images.length === 0) {
       return NextResponse.json(
@@ -11,53 +11,74 @@ export async function POST(req: Request) {
       );
     }
 
-    // Payload Creatomate
-    const payload = {
-      output_format: "mp4",
-      modifications: [
-        ...images.map((url: string, i: number) => ({
-          name: `image${i + 1}`,
-          image_url: url,
-          duration: duration || 2,
-        })),
-        title
-          ? {
-              name: "title",
-              text: title,
-            }
-          : null,
-        audio
-          ? {
-              name: "audio",
-              audio_url: audio,
-            }
-          : null,
-      ].filter(Boolean),
-      framerate: fps || 30,
-      width: 1080,
-      height: 1920,
-    };
+    // Construire la timeline vidéo
+    const elements: any[] = [];
 
-    // Appel API Creatomate
-    const res = await fetch("https://api.creatomate.com/v1/renders", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.CREATOMATE_API_KEY}`,
-      },
-      body: JSON.stringify(payload),
+    images.forEach((url: string, index: number) => {
+      elements.push({
+        type: "image",
+        track: "video",
+        source: url,
+        start: index * durationPerImage,
+        length: durationPerImage,
+        fit: "cover",
+      });
     });
 
-    const data = await res.json();
+    if (title) {
+      elements.push({
+        type: "text",
+        track: "overlay",
+        text: title,
+        start: 0,
+        length: images.length * durationPerImage,
+        fontFamily: "Arial",
+        fontSize: 48,
+        fillColor: "white",
+        x: "50%",
+        y: "90%",
+        textAlign: "center",
+      });
+    }
 
-    if (!res.ok) {
+    if (audio) {
+      elements.push({
+        type: "audio",
+        track: "audio",
+        source: audio,
+        start: 0,
+      });
+    }
+
+    const body = [
+      {
+        output_format: "mp4",
+        width: 1080,
+        height: 1920,
+        fps: fps || 30,
+        elements,
+      },
+    ];
+
+    const response = await fetch("https://api.creatomate.com/v1/renders", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.CREATOMATE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
       return NextResponse.json(
-        { error: data.error?.message || "Erreur API Creatomate" },
+        { error: data.error || "Creatomate API error" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ url: data.url });
+    return NextResponse.json({ ok: true, url: data[0].url });
   } catch (e: any) {
     return NextResponse.json(
       { error: e.message || "Erreur serveur" },
