@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
-    "creatomate": "^3.3.0",
+    "creatomate": "^1.0.0",
     "ffmpeg-static": "^5.1.0",
     "fluent-ffmpeg": "^2.1.2",
     "next": "^14.2.32",
