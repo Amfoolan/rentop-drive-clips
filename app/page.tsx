@@ -22,7 +22,7 @@ export default function Page() {
         audio: audio.trim() || null,
         title: title.trim() || null,
         fps,
-        duration: dur,
+        durationPerImage: dur,
       };
 
       const res = await fetch("/api/generate", {
@@ -36,7 +36,7 @@ export default function Page() {
         throw new Error(json?.error || `Generation failed (${res.status})`);
       }
 
-      setVideoUrl(json.url as string);
+      setVideoUrl(json.url);
     } catch (e: any) {
       setErr(e.message || "Erreur inconnue");
     } finally {
@@ -48,7 +48,7 @@ export default function Page() {
     <main className="max-w-3xl mx-auto p-6 space-y-4">
       <h1 className="text-2xl font-semibold">Rentop Video Creator</h1>
       <p className="text-sm opacity-70">
-        Encodage MP4 serveur via Creatomate (H.264/AAC, 1080×1920, 30 fps)
+        Génération MP4 via Creatomate (H.264/AAC, 1080×1920, 30 fps)
       </p>
 
       <label>Images URLs (une par ligne)</label>
@@ -90,7 +90,7 @@ export default function Page() {
           className="w-24 border rounded p-2"
           value={dur}
           min={1}
-          max={5}
+          max={10}
           onChange={(e) => setDur(Number(e.target.value))}
         />
       </div>
