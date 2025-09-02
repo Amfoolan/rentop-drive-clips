@@ -18,23 +18,23 @@ export default function Page() {
 
     try {
       const payload = {
-        images: images.split("\n").map(s => s.trim()).filter(Boolean),
-        audio: audio.trim() || undefined,
-        title: title.trim() || undefined,
+        images: images.split("\n").map((s) => s.trim()).filter(Boolean),
+        audio: audio.trim() || null,
+        title: title.trim() || null,
         fps,
-        durationPerImage: dur,
-        width: 1080,
-        height: 1920
+        duration: dur,
       };
 
-      const res = await fetch("/encode", {
+      const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       const json = await res.json();
-      if (!res.ok || !json?.ok) throw new Error(json?.error || `encode failed (${res.status})`);
+      if (!res.ok || !json?.url) {
+        throw new Error(json?.error || `Generation failed (${res.status})`);
+      }
 
       setVideoUrl(json.url as string);
     } catch (e: any) {
@@ -47,12 +47,16 @@ export default function Page() {
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-4">
       <h1 className="text-2xl font-semibold">Rentop Video Creator</h1>
-      <p className="text-sm opacity-70">Encodage MP4 serveur (H.264/AAC, 1080×1920, 30 fps)</p>
+      <p className="text-sm opacity-70">
+        Encodage MP4 serveur via Creatomate (H.264/AAC, 1080×1920, 30 fps)
+      </p>
 
       <label>Images URLs (une par ligne)</label>
       <textarea
         className="w-full border rounded p-2 h-36"
-        placeholder={"https://picsum.photos/seed/1/1080/1920\nhttps://picsum.photos/seed/2/1080/1920\nhttps://picsum.photos/seed/3/1080/1920"}
+        placeholder={
+          "https://picsum.photos/seed/1/1080/1920\nhttps://picsum.photos/seed/2/1080/1920\nhttps://picsum.photos/seed/3/1080/1920"
+        }
         value={images}
         onChange={(e) => setImages(e.target.value)}
       />
@@ -104,7 +108,13 @@ export default function Page() {
       {videoUrl && (
         <div className="space-y-2">
           <video src={videoUrl} controls className="w-full rounded border" />
-          <a href={videoUrl} download="rentop-clip.mp4" className="underline">Télécharger MP4</a>
+          <a
+            href={videoUrl}
+            download="rentop-clip.mp4"
+            className="underline text-blue-600"
+          >
+            Télécharger MP4
+          </a>
         </div>
       )}
     </main>
